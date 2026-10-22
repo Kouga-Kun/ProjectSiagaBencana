@@ -216,7 +216,37 @@
 {{-- CUACA, KUALITAS UDARA, PERINGATAN --}}
 <h2 class="section-title">Informasi Kebencanaan</h2>
 
-<div class="cards">
+<style>
+    /* Mengatur layout agar membelah jadi 2 kolom yang sama besar (simetris) */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px; /* Jarak antar kartu */
+        width: 100%;
+        margin-bottom: 24px;
+    }
+    
+    /* Memastikan kartu tingginya sama rata meski isi teksnya beda panjang */
+    .info-grid .card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Mendorong tautan BMKG agar selalu rapi berada di paling bawah kartu */
+    .info-grid .card > a {
+        margin-top: auto;
+    }
+
+    /* Responsif: Jika dibuka di HP (layar kecil), otomatis berubah jadi 1 kolom ke bawah */
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="info-grid">
 
     {{-- CUACA --}}
     <div class="card">
@@ -244,7 +274,7 @@
         <a href="https://www.bmkg.go.id/"
            target="_blank"
            rel="noopener noreferrer">
-            Informasi cuaca BMKG →
+             Informasi cuaca BMKG →
         </a>
     </div>
 
@@ -276,9 +306,11 @@
         <a href="https://iklim.bmkg.go.id/id/kualitas-udara-indonesia/"
            target="_blank"
            rel="noopener noreferrer">
-            Informasi kualitas udara BMKG →
+             Informasi kualitas udara BMKG →
         </a>
     </div>
+
+</div>
 
 
 
@@ -737,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // =====================================
-// =====================================
+    // =====================================
     // KUALITAS UDARA - OPEN-METEO
     // =====================================
     async function loadAirQuality() {
@@ -785,7 +817,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Menggunakan innerHTML untuk merender teks label dan risiko secara bertingkat
             categoryElement.innerHTML = `<strong>${aqiDetails.label}</strong><br><span style="font-size: 0.85em; opacity: 0.9;">${aqiDetails.risk}</span>`;
 
-// Menampilkan data PM tanpa disclaimer
+            // Menampilkan data PM tanpa disclaimer
             pmElement.innerHTML = 
                 `PM2.5: ${current.pm2_5 ?? '--'} µg/m³ | PM10: ${current.pm10 ?? '--'} µg/m³`;
 

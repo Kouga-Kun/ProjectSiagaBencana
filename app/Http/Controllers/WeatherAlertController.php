@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Carbon\Carbon; // Ditambahkan untuk memformat waktu publikasi
 
 class WeatherAlertController extends Controller
 {
@@ -12,7 +13,7 @@ class WeatherAlertController extends Controller
     {
         try {
             $alerts = Cache::remember(
-                'bmkg_weather_alerts_sumbar',
+                'bmkg_weather_alerts_padang', // Nama cache diubah agar lebih representatif
                 now()->addMinutes(5),
                 function () {
                     $response = Http::timeout(10)
@@ -39,30 +40,40 @@ class WeatherAlertController extends Controller
 
                     foreach ($xml->channel->item ?? [] as $item) {
                         $title = trim((string) $item->title);
-
                         $description = trim(
                             strip_tags((string) $item->description)
                         );
-
                         $link = trim((string) $item->link);
-                        $published = trim((string) $item->pubDate);
+                        $rawPublished = trim((string) $item->pubDate);
+
+                        // Memformat waktu agar lebih jelas bagi masyarakat pengguna aplikasi
+                        try {
+                            $publishedFormatted = Carbon::parse($rawPublished)
+                                ->timezone('Asia/Jakarta')
+                                ->translatedFormat('d F Y, H:i T');
+                        } catch (\Exception $e) {
+                            $publishedFormatted = $rawPublished; // Fallback jika format BMKG berubah
+                        }
 
                         $searchText = Str::lower(
                             $title . ' ' . $description
                         );
 
-                        if (!Str::contains($searchText, [
-                            'sumatera barat',
-                            'sumbar',
-                        ])) {
+                        // Memastikan kata kunci spesifik "Padang" ikut terdeteksi
+                        $isPadang = Str::contains($searchText, 'padang');
+                        $isSumbar = Str::contains($searchText, ['sumatera barat', 'sumbar']);
+
+                        // Jika tidak ada sebutan Padang atau Sumbar, abaikan data ini
+                        if (!$isPadang && !$isSumbar) {
                             continue;
                         }
 
                         $results[] = [
                             'title' => $title,
                             'description' => $description,
-                            'published' => $published,
-                            'link' => $link,
+                            'published_formatted' => $publishedFormatted, // Waktu yang sudah rapi
+                            'link' => $link, // Tautan resmi untuk rujukan warga
+                            'is_specific_to_padang' => $isPadang, // Flag berguna jika UI ingin menonjolkan peringatan khusus Padang
                         ];
                     }
 

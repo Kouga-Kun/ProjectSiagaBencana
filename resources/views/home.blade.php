@@ -737,6 +737,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // =====================================
+// =====================================
     // KUALITAS UDARA - OPEN-METEO
     // =====================================
     async function loadAirQuality() {
@@ -753,15 +754,14 @@ document.addEventListener('DOMContentLoaded', function () {
             '&current=us_aqi,pm2_5,pm10' +
             '&timezone=Asia%2FJakarta';
 
-        function getAqiCategory(aqi) {
-            if (aqi <= 50) return 'Baik';
-            if (aqi <= 100) return 'Sedang';
-            if (aqi <= 150) {
-                return 'Tidak sehat bagi kelompok sensitif';
-            }
-            if (aqi <= 200) return 'Tidak sehat';
-            if (aqi <= 300) return 'Sangat tidak sehat';
-            return 'Berbahaya';
+        // Modifikasi: Menambahkan keterangan risiko kesehatan agar mudah dipahami
+        function getAqiDetails(aqi) {
+            if (aqi <= 50) return { label: 'Baik', risk: 'Udara aman dan sehat untuk semua aktivitas luar ruangan.' };
+            if (aqi <= 100) return { label: 'Sedang', risk: 'Kelompok sangat sensitif (misal: penderita asma) sebaiknya membatasi aktivitas berat di luar.' };
+            if (aqi <= 150) return { label: 'Tidak Sehat bagi Kelompok Sensitif', risk: 'Anak-anak, lansia, dan penderita penyakit pernapasan harus mengurangi aktivitas luar.' };
+            if (aqi <= 200) return { label: 'Tidak Sehat', risk: 'Masyarakat umum mulai merasakan dampak kesehatan. Kurangi aktivitas di luar ruangan.' };
+            if (aqi <= 300) return { label: 'Sangat Tidak Sehat', risk: 'Kondisi darurat. Seluruh warga disarankan tetap berada di dalam ruangan.' };
+            return { label: 'Berbahaya', risk: 'Peringatan kesehatan serius! Hindari semua aktivitas fisik di luar ruangan.' };
         }
 
         try {
@@ -778,13 +778,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error('Data AQI tidak tersedia.');
             }
 
-            aqiElement.textContent = `AQI ${current.us_aqi}`;
-            categoryElement.textContent =
-                getAqiCategory(current.us_aqi);
+            const aqiDetails = getAqiDetails(current.us_aqi);
 
-            pmElement.textContent =
-                `PM2.5: ${current.pm2_5 ?? '--'} µg/m³ | ` +
-                `PM10: ${current.pm10 ?? '--'} µg/m³`;
+            aqiElement.textContent = `AQI ${current.us_aqi}`;
+            
+            // Menggunakan innerHTML untuk merender teks label dan risiko secara bertingkat
+            categoryElement.innerHTML = `<strong>${aqiDetails.label}</strong><br><span style="font-size: 0.85em; opacity: 0.9;">${aqiDetails.risk}</span>`;
+
+// Menampilkan data PM tanpa disclaimer
+            pmElement.innerHTML = 
+                `PM2.5: ${current.pm2_5 ?? '--'} µg/m³ | PM10: ${current.pm10 ?? '--'} µg/m³`;
 
             if (updatedElement && current.time) {
                 updatedElement.textContent =
@@ -793,10 +796,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (error) {
             aqiElement.textContent = 'Tidak tersedia';
-            categoryElement.textContent =
-                'Data kualitas udara gagal dimuat.';
-            pmElement.textContent =
-                'Periksa koneksi internet lalu coba kembali.';
+            categoryElement.textContent = 'Data kualitas udara gagal dimuat.';
+            pmElement.textContent = 'Periksa koneksi internet lalu coba kembali.';
 
             console.error('Kesalahan kualitas udara:', error);
         }

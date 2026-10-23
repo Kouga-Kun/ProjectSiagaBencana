@@ -198,7 +198,11 @@
             <a href="{{ route('berita') }}">Berita</a>
             <a href="{{ route('mitigasi') }}">Mitigasi</a>
             <a href="{{ route('laporan') }}">Laporan</a>
-            <a href="{{ route('profil') }}">Profil</a>
+            @auth
+                <a href="{{ route('profil') }}">Profil</a>
+            @else
+                <a href="{{ route('profil') }}">Profil</a>
+            @endauth
         </nav>
     </header>
 

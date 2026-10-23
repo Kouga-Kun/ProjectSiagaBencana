@@ -67,7 +67,7 @@
         @if ($isReportStaff)
             <a class="report-button" href="{{ route('laporan.create') }}">+ Tambah laporan</a>
         @elseif (! auth()->check())
-            <a class="report-button secondary" href="{{ route('login') }}">Masuk petugas</a>
+            <a class="report-button secondary" href="{{ route('report-staff.login') }}">Masuk petugas</a>
         @endif
     </header>
 

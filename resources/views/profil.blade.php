@@ -14,6 +14,11 @@
     .menu-item strong { display: block; margin-bottom: 5px; }
     .menu-item p { color: #64748b; margin: 0; }
     .notice { background: #fff7ed; padding: 16px; border-radius: 8px; color: #9a3412; }
+    .auth-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+    .auth-button { display: inline-flex; justify-content: center; padding: 11px 18px; border-radius: 8px; color: white; background: #1e40af; text-decoration: none; font-weight: 700; }
+    .auth-button.secondary { color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; }
+    .logout-button { margin-top: 12px; border: 1px solid #fecaca; color: #b91c1c; background: #fff; cursor: pointer; font: inherit; }
+    .status-message { padding: 12px 16px; border-radius: 8px; color: #166534; background: #dcfce7; }
     
     /* Grid 2 kolom yang awalnya disembunyikan */
     .contact-grid { display: none; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; border-top: 1px dashed #fecaca; padding-top: 15px; }
@@ -36,20 +41,37 @@
     Kelola informasi akun dan akses fitur pendukung keselamatan.
 </p>
 
+@if (session('status'))
+    <p class="status-message" role="status">{{ session('status') }}</p>
+@endif
+
 <section class="profile-card">
-    <div class="profile-header">
-        <div class="avatar">👤</div>
-        <div>
-            <h2 style="margin-bottom: 5px;">Pengguna SiagaBencana</h2>
-            <p style="margin: 0; color: #64748b;">
-                Akun tamu · Profil belum diatur
-            </p>
+    @guest
+        <div class="profile-header">
+            <div class="avatar">👤</div>
+            <div>
+                <h2 style="margin-bottom: 5px;">Profil pengguna</h2>
+                <p style="margin: 0; color: #64748b;">Silakan login terlebih dahulu untuk mengakses halaman profil.</p>
+            </div>
         </div>
-    </div>
-    <p>
-        Informasi profil akan tersedia setelah fitur pendaftaran,
-        login, dan pengelolaan akun dibuat.
-    </p>
+        <div class="auth-actions">
+            <a class="auth-button" href="{{ route('login') }}">Login</a>
+            <a class="auth-button secondary" href="{{ route('register') }}">Daftar Akun</a>
+        </div>
+    @else
+        <div class="profile-header">
+            <div class="avatar">👤</div>
+            <div>
+                <h2 style="margin-bottom: 5px;">{{ $user->name }}</h2>
+                <p style="margin: 0; color: #64748b;">{{ $user->email }}</p>
+            </div>
+        </div>
+        <p>Akun terdaftar sejak {{ $user->created_at?->translatedFormat('d F Y') ?? 'tanggal tidak tersedia' }}.</p>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button class="auth-button logout-button" type="submit">Keluar</button>
+        </form>
+    @endguest
 </section>
 
 <section class="profile-card">

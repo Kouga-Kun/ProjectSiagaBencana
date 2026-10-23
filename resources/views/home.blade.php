@@ -103,30 +103,67 @@
         line-height: 1.6;
     }
 
-    .news-card {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+    .news-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
     }
 
-    .news-tag {
-        background: #e0f2fe;
-        color: #075985;
-        padding: 5px 9px;
-        border-radius: 6px;
+    .news-section-title {
+        font-size: 20px;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 12px;
+    }
+
+    .news-card {
+        background: var(--bg-card);
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .news-card:hover {
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.06);
+        transform: translateY(-3px);
+    }
+
+    .news-img {
+        height: 180px;
+        background-color: #e2e8f0;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .news-content {
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .news-category {
         font-size: 12px;
         font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .news-title {
+        font-size: 17px;
+        margin: 0 0 12px;
+        color: var(--text-dark);
+        line-height: 1.4;
     }
 
     .news-date {
-        color: #64748b;
-        font-size: 12px;
-    }
-
-    .news-card a {
+        font-size: 13px;
+        color: var(--text-muted);
         margin-top: auto;
-        padding-top: 8px;
     }
 
     .map-container {
@@ -434,10 +471,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     item.append(heading, description);
 
-                    if (alert.published) {
+                    if (alert.published_formatted) {
                         const date = document.createElement('small');
                         date.textContent =
-                            'Waktu publikasi: ' + alert.published;
+                            'Waktu publikasi: ' + alert.published_formatted;
 
                         item.appendChild(date);
                     }
@@ -522,64 +559,82 @@ document.addEventListener('DOMContentLoaded', function () {
     </p>
 </div>
 
-{{-- BERITA EDUKASI --}}
+{{-- BERITA TERKINI --}}
 <h2 class="section-title">📰 Berita dan Informasi Terbaru</h2>
 
-<p class="map-description">
-    Materi edukasi berikut merupakan konten contoh SiagaBencana,
-    bukan berita kejadian terkini dari media.
-</p>
+<h3 class="news-section-title">Info Terkini</h3>
+<div class="news-grid">
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1605814511995-10332822a106?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-danger);">INFO GEMPA</span>
+            <h4 class="news-title">Update Penanganan Dampak Gempa Bumi di Sektor 1 Padang</h4>
+            <span class="news-date">23 Oktober 2026 • 10:15 WIB</span>
+        </div>
+    </article>
 
-<div class="cards">
-    <div class="card news-card">
-        <span class="news-tag">Kesiapsiagaan</span>
-        <h3>Kenali Jalur Evakuasi</h3>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1542838321-419b4b0ed183?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-danger);">INFO GEMPA</span>
+            <h4 class="news-title">Update Penanganan Dampak Gempa Bumi di Sektor 2 Padang</h4>
+            <span class="news-date">22 Oktober 2026 • 18:40 WIB</span>
+        </div>
+    </article>
 
-        <p>
-            Kenali jalur menuju tempat aman dan tentukan titik kumpul
-            keluarga sebelum keadaan darurat terjadi.
-        </p>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1603597384797-15206016e78f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-warning);">WASPADA</span>
+            <h4 class="news-title">Erupsi Gunung Marapi, Warga Sumatera Barat Diharapkan Waspada</h4>
+            <span class="news-date">21 Oktober 2026 • 09:00 WIB</span>
+        </div>
+    </article>
 
-        <span class="news-date">Materi edukasi</span>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1542099981-b51fb0d31ff2?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--primary-color);">INFO BANJIR</span>
+            <h4 class="news-title">Banjir Bandang di Pesisir Selatan, Akses Jalan Lintas Sumatera Terputus</h4>
+            <span class="news-date">20 Oktober 2026 • 14:20 WIB</span>
+        </div>
+    </article>
 
-        <a href="{{ route('evakuasi') }}">
-            Pelajari evakuasi →
-        </a>
-    </div>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-warning);">CUACA BURUK</span>
+            <h4 class="news-title">BMKG Prediksi Hujan Lebat Disertai Petir di Wilayah Padang Pariaman</h4>
+            <span class="news-date">19 Oktober 2026 • 07:30 WIB</span>
+        </div>
+    </article>
 
-    <div class="card news-card">
-        <span class="news-tag">Cuaca</span>
-        <h3>Pantau Prakiraan Cuaca</h3>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1593113630400-ea4288922497?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-safe);">BANTUAN SOSIAL</span>
+            <h4 class="news-title">Distribusi Logistik dan Obat-obatan Tiba di Posko Pengungsian Bypass</h4>
+            <span class="news-date">18 Oktober 2026 • 16:45 WIB</span>
+        </div>
+    </article>
 
-        <p>
-            Periksa prakiraan dan peringatan cuaca resmi,
-            terutama saat hujan lebat atau angin kencang.
-        </p>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1623080775986-13a893049f50?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--color-danger);">LALU LINTAS</span>
+            <h4 class="news-title">Tanah Longsor di Sitinjau Lauik, Sistem Buka Tutup Jalur Diberlakukan</h4>
+            <span class="news-date">17 Oktober 2026 • 11:10 WIB</span>
+        </div>
+    </article>
 
-        <span class="news-date">Sumber eksternal</span>
-
-        <a href="https://www.bmkg.go.id/"
-           target="_blank"
-           rel="noopener noreferrer">
-            Buka situs BMKG →
-        </a>
-    </div>
-
-    <div class="card news-card">
-        <span class="news-tag">Mitigasi</span>
-        <h3>Persiapkan Tas Siaga Bencana</h3>
-
-        <p>
-            Siapkan air minum, makanan tahan lama, senter,
-            obat pribadi, dokumen penting, dan perlengkapan darurat.
-        </p>
-
-        <span class="news-date">Materi edukasi</span>
-
-        <a href="{{ route('mitigasi') }}">
-            Baca panduan mitigasi →
-        </a>
-    </div>
+    <article class="news-card">
+        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1584285422896-1b5e5233c06d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
+        <div class="news-content">
+            <span class="news-category" style="color: var(--primary-color);">INFO RESMI</span>
+            <h4 class="news-title">Status Siaga Darurat Bencana Hidrometeorologi Ditetapkan di Sumbar</h4>
+            <span class="news-date">16 Oktober 2026 • 09:00 WIB</span>
+        </div>
+    </article>
 </div>
 
 {{-- NAVIGASI --}}

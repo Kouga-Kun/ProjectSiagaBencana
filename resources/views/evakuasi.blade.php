@@ -3,9 +3,6 @@
 @section('title', 'Evakuasi - SiagaBencana')
 
 @section('content')
-<!-- Tambahkan pustaka CSS Leaflet untuk styling peta -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-
 <style>
     .page-title { color: #123b63; margin-bottom: 8px; }
     .description { color: #64748b; margin-bottom: 24px; }
@@ -16,9 +13,6 @@
     .warning { border-left: 5px solid #eab308; }
     .danger { border-left: 5px solid #dc2626; }
     .info-box { background: #eaf3fb; padding: 20px; border-radius: 12px; margin-top: 24px; }
-    
-    /* Styling kontainer peta */
-    #evacuationMap { height: 450px; border-radius: 8px; border: 2px solid #cbd5e1; margin-top: 15px; z-index: 1; }
 </style>
 
 <h1 class="page-title">Peta dan Informasi Evakuasi</h1>
@@ -52,9 +46,7 @@
     <p style="margin-bottom: 15px; color: #475569;">
         Titik hijau pada peta menunjukkan lokasi instansi resmi, rumah sakit, dan titik kumpul berdasarkan data dari instansi terkait.
     </p>
-    
-    <!-- Area tempat peta Leaflet akan muncul -->
-    <div id="evacuationMap"></div>
+    @include('partials.evacuation-map')
 </div>
 
 <!-- STYLE KHUSUS UNTUK KARTU LANGKAH EVAKUASI -->
@@ -91,8 +83,8 @@
     <div class="step-card">
         <div class="step-icon danger">⏱️</div>
         <div class="step-content">
-            <h4>1. Kenali Tanda & Aturan 20 Menit</h4>
-            <p>Jika gempa terasa sangat kuat (hingga sulit berdiri) atau bergetar terus-menerus <b>lebih dari 60 detik</b>, waspada potensi tsunami. Waktu emas untuk menyelamatkan diri hanya sekitar 20 menit.</p>
+            <h4>1. Kenali Tanda dan Segera Evakuasi</h4>
+            <p>Jika merasakan guncangan kuat atau gempa yang terasa lemah tetapi berlangsung lama, segera lakukan evakuasi mandiri dari pantai tanpa menunggu peringatan atau perintah evakuasi.</p>
         </div>
     </div>
 
@@ -107,8 +99,8 @@
     <div class="step-card">
         <div class="step-icon">🏃</div>
         <div class="step-content">
-            <h4>3. Ikuti Jalur & Hindari Sungai</h4>
-            <p>Bergegaslah menuju Zona Aman atau dataran tinggi mengikuti rambu panah hijau. <b>Sangat penting:</b> Hindari berlari atau berkendara menyusuri pinggiran sungai karena arus tsunami bisa masuk melaluinya.</p>
+            <h4>3. Ikuti Arahan Evakuasi Resmi</h4>
+            <p>Ikuti petunjuk petugas dan rambu evakuasi resmi setempat. Jika berada di pesisir dan merasakan tanda alami tsunami, segera menjauh dari pantai menuju tempat tinggi atau ke arah daratan. Hindari lembah dan alur sungai.</p>
         </div>
     </div>
 
@@ -130,82 +122,4 @@
 
 </div>
 
-<!-- Tambahkan pustaka JS Leaflet -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // 1. Inisialisasi peta (Fokus agak ke tengah agar semua zona terlihat)
-        var map = L.map('evacuationMap').setView([-0.9300, 100.3800], 13);
-
-        // 2. Tambahkan lapisan peta dari OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // ==========================================
-        // A. MEMBUAT ZONA RISIKO (MERAH, KUNING, HIJAU)
-        // ==========================================
-        
-        // ZONA BAHAYA (Merah) - Area Pesisir Pantai (Barat)
-        var boundsDanger = [[-0.9700, 100.3400], [-0.8900, 100.3600]];
-        L.rectangle(boundsDanger, {
-            color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.15, weight: 2
-        }).addTo(map).bindPopup('<b>🔴 Zona Bahaya</b><br>Area pesisir pantai. Risiko tinggi hantaman gelombang. Segera evakuasi dari sini!');
-
-        // ZONA WASPADA (Kuning) - Area Tengah kota
-        var boundsWarning = [[-0.9700, 100.3600], [-0.8900, 100.3850]];
-        L.rectangle(boundsWarning, {
-            color: '#eab308', fillColor: '#eab308', fillOpacity: 0.15, weight: 2
-        }).addTo(map).bindPopup('<b>🟡 Zona Waspada</b><br>Area tengah kota. Tetap waspada dan ikuti jalur evakuasi ke arah Timur.');
-
-        // ZONA AMAN (Hijau) - Area Timur (Bypass / Dataran Tinggi)
-        var boundsSafe = [[-0.9700, 100.3850], [-0.8900, 100.4300]];
-        L.rectangle(boundsSafe, {
-            color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.15, weight: 2
-        }).addTo(map).bindPopup('<b>🟢 Zona Aman</b><br>Area Bypass dan dataran tinggi. Lokasi pengungsian akhir.');
-
-
-        // ==========================================
-        // B. MEMBUAT JALUR EVAKUASI (GARIS MERAH)
-        // ==========================================
-        // Mengikuti instruksi PDF: "Segera Menuju Garis Merah" menjauhi pantai
-        
-        var routeStyle = { color: 'red', weight: 4, dashArray: '8, 8', opacity: 0.8 };
-
-        // Jalur 1: Dari Pantai Taplau menuju Bypass (Arah Khatib Sulaiman / Gn. Pangilun)
-        var route1 = [ [-0.9250, 100.3520], [-0.9250, 100.3680], [-0.9168, 100.4113] ];
-        L.polyline(route1, routeStyle).addTo(map)
-         .bindPopup('<b>Jalur Evakuasi Utara</b><br>Mengarah ke Posko Utama BPBD Bypass.');
-
-        // Jalur 2: Dari area Purus/Veteran menuju arah Timur (Kampus/Bypass)
-        var route2 = [ [-0.9450, 100.3550], [-0.9450, 100.3750], [-0.9450, 100.4100] ];
-        L.polyline(route2, routeStyle).addTo(map)
-         .bindPopup('<b>Jalur Evakuasi Tengah</b><br>Ikuti jalan utama ke arah Timur menjauhi garis pantai.');
-
-
-        // ==========================================
-        // C. MENAMBAHKAN TITIK KOORDINAT (MARKER)
-        // ==========================================
-        
-        var safeIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-        });
-
-        var evacuationPoints = [
-            { name: "Kantor BPBD Kota Padang", lat: -0.9168, lng: 100.4113, desc: "Pusat Komando (Zona Aman)" },
-            { name: "RSUP Dr. M. Djamil", lat: -0.9429, lng: 100.3621, desc: "Layanan Medis Darurat (Zona Waspada)" },
-            { name: "Kantor Gubernur Sumbar", lat: -0.9238, lng: 100.3624, desc: "Titik Kumpul Sementara" },
-            { name: "Polresta Padang", lat: -0.9483, lng: 100.3636, desc: "Pusat Keamanan" }
-        ];
-
-        evacuationPoints.forEach(function(point) {
-            var marker = L.marker([point.lat, point.lng], {icon: safeIcon}).addTo(map);
-            marker.bindPopup(`<strong>${point.name}</strong><br>${point.desc}`);
-        });
-    });
-</script>
 @endsection

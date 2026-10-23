@@ -182,6 +182,10 @@
         }
     </style>
     @stack('styles')
+    <style>
+        /* Sedikit menaikkan ketebalan teks agar lebih nyaman dibaca di seluruh halaman. */
+        p, li { font-weight: 500; }
+    </style>
 </head>
 <body>
 

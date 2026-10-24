@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
+import 'evacuation_map.dart';
 
 class EvacuationPage extends StatelessWidget {
   const EvacuationPage({required this.onOpenMitigation, super.key});
@@ -28,14 +29,6 @@ class EvacuationPage extends StatelessWidget {
           description: 'Kenali tanda bahaya, pahami langkah evakuasi, dan ikuti informasi dari petugas serta kanal resmi.',
           icon: Icons.directions_walk_rounded,
         ),
-        const SizedBox(height: 24),
-        const SiagaNotice(
-          title: 'Peta resmi belum tersedia',
-          message: 'Website sumber memakai koordinat dan rute yang ditulis langsung di kode. Flutter tidak menampilkannya sebagai petunjuk resmi sampai datanya dapat dikonfirmasi.',
-          tone: SiagaTone.warning,
-          icon: Icons.location_off_outlined,
-        ),
-        const SizedBox(height: 30),
         const SiagaSectionHeader(
           title: 'Memahami status zona',
           subtitle: 'Istilah berikut mengikuti penjelasan umum di website sumber; tidak menunjukkan batas wilayah tertentu.',
@@ -65,7 +58,7 @@ class EvacuationPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 30),
-        const _MapSourcePanel(),
+        const EvacuationMapPanel(),
         const SizedBox(height: 34),
         const SiagaSectionHeader(
           title: 'Langkah kritis saat evakuasi',
@@ -166,80 +159,6 @@ class _ZoneCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(message, style: Theme.of(context).textTheme.bodyMedium),
         ],
-      ),
-    );
-  }
-}
-
-class _MapSourcePanel extends StatelessWidget {
-  const _MapSourcePanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return SiagaCard(
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: 210,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFEFF6FF), Color(0xFFF8FAFC)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned(
-                    left: 24,
-                    top: 24,
-                    child: SiagaBadge(
-                      label: 'Peta Kota Padang',
-                      tone: SiagaTone.info,
-                      icon: Icons.map_outlined,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.location_searching_rounded,
-                    size: 72,
-                    color: SiagaColors.navyHover,
-                  ),
-                  const Positioned(
-                    right: 22,
-                    bottom: 18,
-                    child: SiagaBadge(
-                      label: 'Belum tersedia',
-                      tone: SiagaTone.warning,
-                      icon: Icons.location_off_outlined,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Lokasi evakuasi belum ditampilkan',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    'Peta lama menggunakan titik instansi dan rute tetap yang belum terhubung ke sumber lokasi terverifikasi. Informasi lokasi tidak akan ditampilkan sebagai arahan perjalanan sebelum dikonfirmasi.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

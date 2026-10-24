@@ -133,41 +133,38 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        SiagaCard(
-          padding: EdgeInsets.zero,
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              leading: const SiagaIconTile(
-                icon: Icons.call_outlined,
-                color: SiagaColors.danger,
-                backgroundColor: Color(0xFFFEF2F2),
-              ),
-              title: Text(
-                'Kontak darurat pada website sumber',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              subtitle: const Text(
-                'Nomor tercantum di Blade; pastikan kembali sebelum digunakan.',
-              ),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-              children: [
-                const SiagaNotice(
-                  title: 'Periksa kembali nomor kontak',
-                  message: 'Nomor berikut disalin dari halaman profil Laravel dan belum diverifikasi dalam tahap desain ini.',
-                  tone: SiagaTone.warning,
-                  icon: Icons.fact_check_outlined,
-                ),
-                const SizedBox(height: 14),
-                SiagaResponsiveGrid(
-                  minimumItemWidth: 230,
-                  spacing: 10,
+        SizedBox(
+          width: double.infinity,
+          child: SiagaCard(
+            padding: EdgeInsets.zero,
+            child: Material(
+              type: MaterialType.transparency,
+              child: Theme(
+                data: Theme.of(context)
+                    .copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  leading: const SiagaIconTile(
+                    icon: Icons.call_outlined,
+                    color: SiagaColors.danger,
+                    backgroundColor: Color(0xFFFEF2F2),
+                  ),
+                  title: Text(
+                    'Kontak darurat',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
                   children: [
-                    for (final contact in _contacts)
-                      _ContactCard(contact: contact),
+                    SiagaResponsiveGrid(
+                      minimumItemWidth: 230,
+                      spacing: 10,
+                      children: [
+                        for (final contact in _contacts)
+                          _ContactCard(contact: contact),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

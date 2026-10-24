@@ -207,7 +207,7 @@ class _HomeHero extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Kenali risiko.\\nSiapkan langkah aman.',
+                'Kenali risiko.\nSiapkan langkah aman.',
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   color: Colors.white,
                   fontSize: isWide ? 38 : 32,

@@ -25,12 +25,16 @@ Route::post('/petugas/masuk', [ReportStaffAuthController::class, 'store'])->midd
 Route::middleware(['auth', 'report.staff'])->group(function () {
     Route::post('/petugas/keluar', [ReportStaffAuthController::class, 'destroy'])->name('report-staff.logout');
 
-    Route::get('/laporan/buat', [DisasterReportController::class, 'create'])->name('laporan.create');
-    Route::post('/laporan', [DisasterReportController::class, 'store'])->name('laporan.store');
     Route::get('/laporan/{disasterReport}/edit', [DisasterReportController::class, 'edit'])->name('laporan.edit');
     Route::patch('/laporan/{disasterReport}', [DisasterReportController::class, 'update'])->name('laporan.update');
     Route::patch('/laporan/{disasterReport}/verifikasi', [DisasterReportController::class, 'verify'])->name('laporan.verify');
 });
+
+Route::middleware('auth')->group(function () {
+    Route::get('/laporan/buat', [DisasterReportController::class, 'create'])->name('laporan.create');
+    Route::post('/laporan', [DisasterReportController::class, 'store'])->name('laporan.store');
+});
+
 Route::get('/profil', [UserAuthController::class, 'showProfile'])->name('profil');
 
 Route::get('/api/peringatan-bencana', [WeatherAlertController::class, 'index'])

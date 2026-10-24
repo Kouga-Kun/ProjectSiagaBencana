@@ -20,6 +20,8 @@ class DisasterReport extends Model
 
     public const SOURCE_OFFICIAL = 'official';
 
+    public const SOURCE_COMMUNITY = 'community';
+
     protected $fillable = [
         'occurred_at',
         'disaster_type',

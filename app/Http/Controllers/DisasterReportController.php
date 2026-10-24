@@ -7,7 +7,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\In;
 use Illuminate\View\View;
 
 class DisasterReportController extends Controller
@@ -29,9 +28,11 @@ class DisasterReportController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->reportRules());
+        $validated = $request->validate($this->reportRules(forSubmission: true));
 
         $report = new DisasterReport($validated);
+        $report->source_type = DisasterReport::SOURCE_COMMUNITY;
+        $report->source_name = $request->user()->name;
         $report->verification_status = DisasterReport::STATUS_PENDING;
         $report->submitted_by = $request->user()->id;
         $report->save();
@@ -78,22 +79,31 @@ class DisasterReportController extends Controller
     }
 
     /**
-     * @return array<string, array<int, string|In>>
+     * @return array<string, array<int, mixed>>
      */
-    private function reportRules(): array
+    private function reportRules(bool $forSubmission = false): array
     {
-        return [
+        $rules = [
             'occurred_at' => ['nullable', 'date'],
-            'disaster_type' => ['required', 'string', 'max:100'],
+            'disaster_type' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:120'],
             'city_district' => ['nullable', 'string', 'max:120'],
             'district' => ['nullable', 'string', 'max:120'],
             'affected_area' => ['nullable', 'string', 'max:180'],
-            'description' => ['required', 'string', 'max:10000'],
-            'source_type' => ['required', Rule::in([DisasterReport::SOURCE_STAFF, DisasterReport::SOURCE_OFFICIAL])],
+            'description' => ['nullable', 'string', 'max:10000'],
+        ];
+
+        if ($forSubmission) {
+            $rules['description'][] = 'required_without_all:disaster_type,occurred_at,province,city_district,district,affected_area';
+
+            return $rules;
+        }
+
+        return array_merge($rules, [
+            'source_type' => ['required', Rule::in([DisasterReport::SOURCE_STAFF, DisasterReport::SOURCE_OFFICIAL, DisasterReport::SOURCE_COMMUNITY])],
             'source_name' => ['required', 'string', 'max:255'],
             'source_url' => ['nullable', 'url', 'max:2048'],
-        ];
+        ]);
     }
 
     private function page(Request $request, ?DisasterReport $editingReport = null): View
@@ -105,7 +115,7 @@ class DisasterReportController extends Controller
                 DisasterReport::STATUS_VERIFIED,
                 DisasterReport::STATUS_REJECTED,
             ])],
-            'source_type' => ['nullable', Rule::in([DisasterReport::SOURCE_STAFF, DisasterReport::SOURCE_OFFICIAL])],
+            'source_type' => ['nullable', Rule::in([DisasterReport::SOURCE_STAFF, DisasterReport::SOURCE_OFFICIAL, DisasterReport::SOURCE_COMMUNITY])],
             'province' => ['nullable', 'string', 'max:120'],
             'city_district' => ['nullable', 'string', 'max:120'],
             'district' => ['nullable', 'string', 'max:120'],

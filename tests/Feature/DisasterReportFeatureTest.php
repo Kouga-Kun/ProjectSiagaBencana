@@ -137,7 +137,7 @@ class DisasterReportFeatureTest extends TestCase
             ->assertSeeText('Laporan 01');
     }
 
-    public function test_guests_and_non_staff_cannot_open_staff_report_actions(): void
+    public function test_only_authenticated_users_can_submit_while_staff_actions_remain_protected(): void
     {
         $this->get(route('laporan.create'))->assertRedirect(route('login'));
 
@@ -146,7 +146,18 @@ class DisasterReportFeatureTest extends TestCase
 
         $this->actingAs($resident)
             ->get(route('laporan.create'))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSeeText('Buat laporan bencana');
+
+        $this->actingAs($resident)
+            ->post(route('laporan.store'), ['disaster_type' => 'Banjir'])
+            ->assertRedirect(route('laporan'));
+
+        $submittedReport = DisasterReport::query()->where('submitted_by', $resident->id)->sole();
+        $this->assertSame('Banjir', $submittedReport->disaster_type);
+        $this->assertSame(DisasterReport::SOURCE_COMMUNITY, $submittedReport->source_type);
+        $this->assertSame($resident->name, $submittedReport->source_name);
+        $this->assertSame(DisasterReport::STATUS_PENDING, $submittedReport->verification_status);
 
         $this->actingAs($resident)
             ->patch(route('laporan.verify', $report), ['verification_status' => 'verified'])
@@ -171,15 +182,13 @@ class DisasterReportFeatureTest extends TestCase
         $this->assertModelExists($report);
     }
 
-    public function test_report_input_validation_rejects_missing_description(): void
+    public function test_report_input_validation_rejects_an_empty_report(): void
     {
         $staff = $this->createStaff();
-        $payload = $this->validPayload();
-        unset($payload['description']);
 
         $this->actingAs($staff)
             ->from(route('laporan.create'))
-            ->post(route('laporan.store'), $payload)
+            ->post(route('laporan.store'), [])
             ->assertRedirect(route('laporan.create'))
             ->assertSessionHasErrors('description');
 

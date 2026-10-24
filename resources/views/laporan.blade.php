@@ -64,10 +64,10 @@
             <h1 class="page-title">Laporan dan Riwayat Bencana</h1>
             <p class="description">Lihat laporan kejadian beserta sumber dan status verifikasinya. Laporan yang belum terverifikasi belum dapat dianggap sebagai kejadian terkonfirmasi.</p>
         </div>
-        @if ($isReportStaff)
-            <a class="report-button" href="{{ route('laporan.create') }}">+ Tambah laporan</a>
-        @elseif (! auth()->check())
-            <a class="report-button secondary" href="{{ route('report-staff.login') }}">Masuk petugas</a>
+        @auth
+            <a class="report-button" href="{{ route('laporan.create') }}">+ Buat laporan</a>
+        @else
+            <a class="report-button secondary" href="{{ route('laporan.create') }}">Login untuk membuat laporan</a>
         @endif
     </header>
 
@@ -89,28 +89,34 @@
         <article class="stat-card"><p>Menunggu verifikasi</p><div class="stat-value">{{ number_format($pendingReports, 0, ',', '.') }}</div><small>Belum dikonfirmasi petugas</small></article>
     </section>
 
-    @if ($isReportStaff && (request()->routeIs('laporan.create') || $editingReport))
+    @if (request()->routeIs('laporan.create') || ($isReportStaff && $editingReport))
         <section class="info-panel" aria-labelledby="report-form-title">
-            <h2 id="report-form-title">{{ $editingReport ? 'Perbarui laporan' : 'Tambah laporan bencana' }}</h2>
+            <h2 id="report-form-title">{{ $editingReport ? 'Perbarui laporan' : 'Buat laporan bencana' }}</h2>
+            @unless ($editingReport)
+                <p class="description">Isi informasi yang kamu ketahui. Semua bagian boleh dikosongkan kecuali minimal satu informasi kejadian.</p>
+            @endunless
             <form class="report-form" method="POST" action="{{ $editingReport ? route('laporan.update', $editingReport) : route('laporan.store') }}">
                 @csrf
                 @if ($editingReport) @method('PATCH') @endif
                 <div class="report-form-grid">
-                    <label>Jenis bencana <input name="disaster_type" value="{{ old('disaster_type', $editingReport?->disaster_type) }}" maxlength="100" required>@error('disaster_type')<span class="field-error">{{ $message }}</span>@enderror</label>
+                    <label>Jenis bencana (opsional) <input name="disaster_type" value="{{ old('disaster_type', $editingReport?->disaster_type) }}" maxlength="100">@error('disaster_type')<span class="field-error">{{ $message }}</span>@enderror</label>
                     <label>Tanggal dan waktu kejadian <input type="datetime-local" name="occurred_at" value="{{ old('occurred_at', $editingReport?->occurred_at?->format('Y-m-d\TH:i')) }}">@error('occurred_at')<span class="field-error">{{ $message }}</span>@enderror</label>
                     <label>Provinsi <input name="province" value="{{ old('province', $editingReport?->province) }}" maxlength="120"></label>
                     <label>Kota/kabupaten <input name="city_district" value="{{ old('city_district', $editingReport?->city_district) }}" maxlength="120"></label>
                     <label>Kecamatan <input name="district" value="{{ old('district', $editingReport?->district) }}" maxlength="120"></label>
                     <label>Lokasi/wilayah terdampak <input name="affected_area" value="{{ old('affected_area', $editingReport?->affected_area) }}" maxlength="180"></label>
-                    <label>Sumber data
-                        <select name="source_type" required>
-                            <option value="staff" @selected(old('source_type', $editingReport?->source_type ?? 'staff') === 'staff')>Input petugas</option>
-                            <option value="official" @selected(old('source_type', $editingReport?->source_type) === 'official')>Sumber resmi</option>
-                        </select>
-                    </label>
-                    <label>Nama petugas/instansi sumber <input name="source_name" value="{{ old('source_name', $editingReport?->source_name) }}" maxlength="255" required></label>
-                    <label class="wide">URL sumber resmi (opsional) <input type="url" name="source_url" value="{{ old('source_url', $editingReport?->source_url) }}" maxlength="2048" placeholder="https://"></label>
-                    <label class="wide">Deskripsi kejadian <textarea name="description" maxlength="10000" required>{{ old('description', $editingReport?->description) }}</textarea>@error('description')<span class="field-error">{{ $message }}</span>@enderror</label>
+                    @if ($editingReport)
+                        <label>Sumber data
+                            <select name="source_type" required>
+                                <option value="staff" @selected(old('source_type', $editingReport->source_type) === 'staff')>Input petugas</option>
+                                <option value="official" @selected(old('source_type', $editingReport->source_type) === 'official')>Sumber resmi</option>
+                                <option value="community" @selected(old('source_type', $editingReport->source_type) === 'community')>Laporan pengguna</option>
+                            </select>
+                        </label>
+                        <label>Nama petugas/instansi sumber <input name="source_name" value="{{ old('source_name', $editingReport->source_name) }}" maxlength="255" required></label>
+                        <label class="wide">URL sumber resmi (opsional) <input type="url" name="source_url" value="{{ old('source_url', $editingReport->source_url) }}" maxlength="2048" placeholder="https://"></label>
+                    @endif
+                    <label class="wide">Deskripsi kejadian (opsional) <textarea name="description" maxlength="10000">{{ old('description', $editingReport?->description) }}</textarea>@error('description')<span class="field-error">{{ $message }}</span>@enderror</label>
                 </div>
                 <p class="description">Laporan baru dan laporan yang diubah akan berstatus menunggu verifikasi.</p>
                 <div class="report-actions"><button class="report-button" type="submit">Simpan laporan</button><a class="report-button secondary" href="{{ route('laporan') }}">Batal</a></div>
@@ -124,7 +130,7 @@
             <div class="filter-grid">
                 <label class="filter-field">Jenis bencana<select name="disaster_type"><option value="">Semua jenis</option>@foreach ($disasterTypes as $type)<option value="{{ $type }}" @selected(($filters['disaster_type'] ?? '') === $type)>{{ $type }}</option>@endforeach</select></label>
                 <label class="filter-field">Status verifikasi<select name="verification_status"><option value="">Semua status</option><option value="pending" @selected(($filters['verification_status'] ?? '') === 'pending')>Menunggu verifikasi</option><option value="verified" @selected(($filters['verification_status'] ?? '') === 'verified')>Terverifikasi</option><option value="rejected" @selected(($filters['verification_status'] ?? '') === 'rejected')>Ditolak</option></select></label>
-                <label class="filter-field">Sumber data<select name="source_type"><option value="">Semua sumber</option><option value="staff" @selected(($filters['source_type'] ?? '') === 'staff')>Input petugas</option><option value="official" @selected(($filters['source_type'] ?? '') === 'official')>Sumber resmi</option></select></label>
+                <label class="filter-field">Sumber data<select name="source_type"><option value="">Semua sumber</option><option value="staff" @selected(($filters['source_type'] ?? '') === 'staff')>Input petugas</option><option value="official" @selected(($filters['source_type'] ?? '') === 'official')>Sumber resmi</option><option value="community" @selected(($filters['source_type'] ?? '') === 'community')>Laporan pengguna</option></select></label>
                 <label class="filter-field">Provinsi<select name="province"><option value="">Semua provinsi</option>@foreach ($provinces as $province)<option value="{{ $province }}" @selected(($filters['province'] ?? '') === $province)>{{ $province }}</option>@endforeach</select></label>
                 <label class="filter-field">Kota/kabupaten<select name="city_district"><option value="">Semua kota/kabupaten</option>@foreach ($cities as $city)<option value="{{ $city }}" @selected(($filters['city_district'] ?? '') === $city)>{{ $city }}</option>@endforeach</select></label>
                 <label class="filter-field">Kecamatan<select name="district"><option value="">Semua kecamatan</option>@foreach ($districts as $district)<option value="{{ $district }}" @selected(($filters['district'] ?? '') === $district)>{{ $district }}</option>@endforeach</select></label>
@@ -144,17 +150,17 @@
                     @forelse ($reports as $report)
                         <tr>
                             <td>{{ $report->occurred_at?->format('d M Y, H:i') ?? 'Waktu belum tersedia' }}</td>
-                            <td>{{ $report->disaster_type }}</td>
+                            <td>{{ $report->disaster_type ?: 'Belum diketahui' }}</td>
                             <td>{{ collect([$report->affected_area, $report->district, $report->city_district, $report->province])->filter()->join(', ') ?: 'Wilayah belum tersedia' }}</td>
-                            <td>{{ $report->source_type === 'official' ? 'Sumber resmi' : 'Input petugas' }}<br>{{ $report->source_name }}@if (is_string($report->source_url) && (str_starts_with(strtolower($report->source_url), 'https://') || str_starts_with(strtolower($report->source_url), 'http://')))<a class="source-link" href="{{ $report->source_url }}" target="_blank" rel="noopener noreferrer">Lihat sumber</a>@endif</td>
+                            <td>{{ ['official' => 'Sumber resmi', 'community' => 'Laporan pengguna', 'staff' => 'Input petugas'][$report->source_type] ?? 'Sumber tidak diketahui' }}<br>{{ $report->source_name }}@if (is_string($report->source_url) && (str_starts_with(strtolower($report->source_url), 'https://') || str_starts_with(strtolower($report->source_url), 'http://')))<a class="source-link" href="{{ $report->source_url }}" target="_blank" rel="noopener noreferrer">Lihat sumber</a>@endif</td>
                             <td><span class="status-badge status-{{ $report->verification_status }}">{{ ['pending' => 'Menunggu verifikasi', 'verified' => 'Terverifikasi', 'rejected' => 'Ditolak'][$report->verification_status] ?? 'Status tidak diketahui' }}</span>@if ($report->verified_at)<br><small>{{ $report->verified_at->format('d M Y, H:i') }}@if ($report->verifier) · {{ $report->verifier->name }}@endif</small>@endif</td>
-                            <td>{{ \Illuminate\Support\Str::limit($report->description, 240) }}</td>
+                            <td>{{ $report->description ? \Illuminate\Support\Str::limit($report->description, 240) : 'Belum ada deskripsi.' }}</td>
                             @if ($isReportStaff)
                                 <td><div class="record-actions"><a class="report-button secondary" href="{{ route('laporan.edit', $report) }}">Edit</a><form method="POST" action="{{ route('laporan.verify', $report) }}">@csrf @method('PATCH')<button class="report-button success" type="submit" name="verification_status" value="verified">Verifikasi</button><button class="report-button danger" type="submit" name="verification_status" value="rejected">Tolak</button></form></div></td>
                             @endif
                         </tr>
                     @empty
-                        <tr><td class="empty-state" colspan="{{ $isReportStaff ? 7 : 6 }}">@if (count($filters))Tidak ada laporan yang cocok dengan filter ini. <a href="{{ route('laporan') }}">Hapus filter</a>.@else Belum ada data laporan. Data akan tampil setelah petugas memasukkan laporan; tidak ada kejadian contoh yang ditambahkan.@endif</td></tr>
+                        <tr><td class="empty-state" colspan="{{ $isReportStaff ? 7 : 6 }}">@if (count($filters))Tidak ada laporan yang cocok dengan filter ini. <a href="{{ route('laporan') }}">Hapus filter</a>.@else Belum ada data laporan. Buat laporan setelah login; tidak ada kejadian contoh yang ditambahkan.@endif</td></tr>
                     @endforelse
                 </tbody>
             </table>

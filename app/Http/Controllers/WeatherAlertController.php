@@ -2,18 +2,46 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Carbon\Carbon; // Ditambahkan untuk memformat waktu publikasi
 
 class WeatherAlertController extends Controller
 {
+    private const CACHE_KEY = 'bmkg_weather_alerts_padang_v2';
+
+    /**
+     * BMKG kecamatan names that identify Kota Padang in alert descriptions.
+     *
+     * @var array<int, string>
+     */
+    private const KOTA_PADANG_DISTRICTS = [
+        'bungus teluk kabung',
+        'koto tangah',
+        'kuranji',
+        'lubuk begalung',
+        'lubuk kilangan',
+        'nanggalo',
+        'padang barat',
+        'padang selatan',
+        'padang timur',
+        'padang utara',
+        'pauh',
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    private const SUMBAR_OTHER_DISTRICTS = [
+        'padang gelugur',
+    ];
+
     public function index()
     {
         try {
             $alerts = Cache::remember(
-                'bmkg_weather_alerts_padang', // Nama cache diubah agar lebih representatif
+                self::CACHE_KEY,
                 now()->addMinutes(5),
                 function () {
                     $response = Http::timeout(10)
@@ -55,25 +83,15 @@ class WeatherAlertController extends Controller
                             $publishedFormatted = $rawPublished; // Fallback jika format BMKG berubah
                         }
 
-                        $searchText = Str::lower(
-                            $title . ' ' . $description
-                        );
-
-                        // Memastikan kata kunci spesifik "Padang" ikut terdeteksi
-                        $isPadang = Str::contains($searchText, 'padang');
-                        $isSumbar = Str::contains($searchText, ['sumatera barat', 'sumbar']);
-
-                        // Jika tidak ada sebutan Padang atau Sumbar, abaikan data ini
-                        if (!$isPadang && !$isSumbar) {
-                            continue;
-                        }
+                        $coverage = $this->classifyCoverage($title, $description);
 
                         $results[] = [
                             'title' => $title,
                             'description' => $description,
                             'published_formatted' => $publishedFormatted, // Waktu yang sudah rapi
                             'link' => $link, // Tautan resmi untuk rujukan warga
-                            'is_specific_to_padang' => $isPadang, // Flag berguna jika UI ingin menonjolkan peringatan khusus Padang
+                            'coverage' => $coverage,
+                            'is_specific_to_padang' => $coverage === 'kota_padang',
                         ];
                     }
 
@@ -97,5 +115,62 @@ class WeatherAlertController extends Controller
                 'alerts' => [],
             ], 503);
         }
+    }
+
+    private function classifyCoverage(string $title, string $description): string
+    {
+        if (preg_match('/\bdi\s+(.+)$/iu', trim($title), $provinceMatch) !== 1) {
+            return 'tidak_diketahui';
+        }
+
+        $province = $this->normalizeAreaName(trim($provinceMatch[1], " \t\n\r\0\x0B.,;:"));
+
+        if (! in_array($province, ['sumatera barat', 'sumbar'], true)) {
+            return 'provinsi_lain';
+        }
+
+        if (preg_match('/\bkhususnya\s+di\s+([^\r\n]+)/iu', $description, $districtMatch) !== 1) {
+            return 'tidak_diketahui';
+        }
+
+        $districts = preg_split('/[,;]|\s+\bdan\b\s+/iu', $districtMatch[1]);
+
+        if ($districts === false || $districts === []) {
+            return 'tidak_diketahui';
+        }
+
+        $districts = array_map(
+            fn (string $district): string => $this->normalizeAreaName(trim($district, " \t\n\r\0\x0B.,;:")),
+            $districts,
+        );
+        $districts = array_values(array_filter(
+            $districts,
+            fn (string $district): bool => $district !== '' && preg_match('/\p{L}/u', $district) === 1,
+        ));
+
+        if ($districts === []) {
+            return 'tidak_diketahui';
+        }
+
+        foreach (self::KOTA_PADANG_DISTRICTS as $padangDistrict) {
+            if (in_array($padangDistrict, $districts, true)) {
+                return 'kota_padang';
+            }
+        }
+
+        foreach (self::SUMBAR_OTHER_DISTRICTS as $sumbarDistrict) {
+            if (in_array($sumbarDistrict, $districts, true)) {
+                return 'sumbar_lainnya';
+            }
+        }
+
+        return 'tidak_diketahui';
+    }
+
+    private function normalizeAreaName(string $name): string
+    {
+        $normalizedName = preg_replace('/\s+/u', ' ', trim($name));
+
+        return Str::lower($normalizedName ?? '');
     }
 }

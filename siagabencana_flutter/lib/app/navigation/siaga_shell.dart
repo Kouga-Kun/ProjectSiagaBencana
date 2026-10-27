@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../features/auth/data/auth_session_service.dart';
 import '../../features/auth/presentation/auth_page.dart';
 import '../../features/evacuation/presentation/evacuation_page.dart';
 import '../../features/home/presentation/home_page.dart';
@@ -8,13 +11,15 @@ import '../../features/mitigation/presentation/mitigation_page.dart';
 import '../../features/news/presentation/news_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/reports/presentation/reports_page.dart';
+import '../network/api_config.dart';
 import '../siaga_theme.dart';
 import 'app_section.dart';
 
 class SiagaShell extends StatefulWidget {
-  const SiagaShell({this.homeDataService, super.key});
+  const SiagaShell({this.homeDataService, this.authSessionService, super.key});
 
   final HomeDataService? homeDataService;
+  final AuthSessionService? authSessionService;
 
   @override
   State<SiagaShell> createState() => _SiagaShellState();
@@ -22,6 +27,67 @@ class SiagaShell extends StatefulWidget {
 
 class _SiagaShellState extends State<SiagaShell> {
   AppSection _currentSection = AppSection.home;
+  late final AuthSessionService _authService;
+  bool _ownsAuthService = false;
+  AuthUser? _authUser;
+  bool _authStatusLoading = true;
+  String? _authStatusError;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsAuthService = widget.authSessionService == null;
+    _authService =
+        widget.authSessionService ??
+        AuthSessionService(apiConfig: const ApiConfig.fromEnvironment());
+    unawaited(_refreshAuthStatus());
+  }
+
+  @override
+  void dispose() {
+    if (_ownsAuthService) {
+      _authService.close();
+    }
+    super.dispose();
+  }
+
+  Future<void> _refreshAuthStatus() async {
+    try {
+      final user = await _authService.fetchCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _authUser = user;
+        _authStatusError = null;
+        _authStatusLoading = false;
+      });
+    } on AuthSessionException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _authUser = null;
+        _authStatusError = error.message;
+        _authStatusLoading = false;
+      });
+    }
+  }
+
+  void _handleAuthenticated(AuthUser user) {
+    setState(() {
+      _authUser = user;
+      _authStatusError = null;
+      _authStatusLoading = false;
+    });
+    _openSection(AppSection.profile);
+  }
+
+  Future<void> _handleLogout() async {
+    await _authService.logout();
+    if (!mounted) return;
+    setState(() {
+      _authUser = null;
+      _authStatusError = null;
+      _authStatusLoading = false;
+    });
+  }
 
   void _openSection(AppSection section) {
     Navigator.of(context).maybePop();
@@ -45,8 +111,6 @@ class _SiagaShellState extends State<SiagaShell> {
                 for (final section in const [
                   AppSection.reports,
                   AppSection.profile,
-                  AppSection.login,
-                  AppSection.registration,
                 ])
                   ListTile(
                     leading: Icon(section.icon, color: SiagaColors.navy),
@@ -76,17 +140,30 @@ class _SiagaShellState extends State<SiagaShell> {
     AppSection.news => NewsPage(onOpenSection: _openSection),
     AppSection.mitigation => const MitigationPage(),
     AppSection.reports => ReportsPage(
-      onOpenLogin: () => _openSection(AppSection.login),
+      authService: _authService,
+      user: _authUser,
+      isAuthLoading: _authStatusLoading,
     ),
     AppSection.login => AuthPage(
       isRegistration: false,
       onOpenSection: _openSection,
+      authService: _authService,
+      onAuthenticated: _handleAuthenticated,
     ),
     AppSection.registration => AuthPage(
       isRegistration: true,
       onOpenSection: _openSection,
+      authService: _authService,
+      onAuthenticated: _handleAuthenticated,
     ),
-    AppSection.profile => ProfilePage(onOpenSection: _openSection),
+    AppSection.profile => ProfilePage(
+      onOpenSection: _openSection,
+      user: _authUser,
+      isLoading: _authStatusLoading,
+      statusError: _authStatusError,
+      onRetryStatus: () => unawaited(_refreshAuthStatus()),
+      onLogout: _handleLogout,
+    ),
   };
 
   @override

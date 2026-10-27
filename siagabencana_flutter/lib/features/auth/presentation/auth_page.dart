@@ -3,16 +3,21 @@ import 'package:flutter/material.dart';
 import '../../../app/navigation/app_section.dart';
 import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
+import '../data/auth_session_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({
     required this.isRegistration,
     required this.onOpenSection,
+    required this.authService,
+    required this.onAuthenticated,
     super.key,
   });
 
   final bool isRegistration;
   final ValueChanged<AppSection> onOpenSection;
+  final AuthSessionService authService;
+  final ValueChanged<AuthUser> onAuthenticated;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -27,7 +32,8 @@ class _AuthPageState extends State<AuthPage> {
 
   bool _passwordIsVisible = false;
   bool _confirmationIsVisible = false;
-  bool _showLocalValidationNotice = false;
+  bool _isSubmitting = false;
+  String? _submissionError;
 
   @override
   void dispose() {
@@ -64,17 +70,39 @@ class _AuthPageState extends State<AuthPage> {
     return null;
   }
 
-  void _validateLocally() {
+  Future<void> _submit() async {
     FocusScope.of(context).unfocus();
+    if (_isSubmitting || !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _showLocalValidationNotice = true;
-      });
-    } else {
-      setState(() {
-        _showLocalValidationNotice = false;
-      });
+    setState(() {
+      _isSubmitting = true;
+      _submissionError = null;
+    });
+    try {
+      final user = widget.isRegistration
+          ? await widget.authService.register(
+              name: _nameController.text.trim(),
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              passwordConfirmation: _confirmationController.text,
+            )
+          : await widget.authService.login(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+      _passwordController.clear();
+      _confirmationController.clear();
+      widget.onAuthenticated(user);
+    } on AuthSessionException catch (error) {
+      if (mounted) {
+        setState(() => _submissionError = error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -135,13 +163,6 @@ class _AuthPageState extends State<AuthPage> {
               : Icons.login_rounded,
         ),
         const SizedBox(height: 24),
-        const SiagaNotice(
-          title: 'Autentikasi belum terhubung',
-          message: 'Form ini hanya memeriksa isian di perangkat. Tidak ada data yang dikirim dan akun belum dibuat.',
-          tone: SiagaTone.warning,
-          icon: Icons.lock_outline_rounded,
-        ),
-        const SizedBox(height: 24),
         LayoutBuilder(
           builder: (context, constraints) {
             final form = _AuthFormCard(
@@ -154,7 +175,8 @@ class _AuthPageState extends State<AuthPage> {
               confirmationController: _confirmationController,
               passwordIsVisible: _passwordIsVisible,
               confirmationIsVisible: _confirmationIsVisible,
-              showLocalValidationNotice: _showLocalValidationNotice,
+              submissionError: _submissionError,
+              isSubmitting: _isSubmitting,
               inputDecoration: _inputDecoration,
               validateEmail: _validateEmail,
               validatePassword: _validatePassword,
@@ -168,7 +190,7 @@ class _AuthPageState extends State<AuthPage> {
                   _confirmationIsVisible = !_confirmationIsVisible;
                 });
               },
-              onSubmit: _validateLocally,
+              onSubmit: _submit,
             );
 
             if (constraints.maxWidth < 850) {
@@ -201,7 +223,8 @@ class _AuthFormCard extends StatelessWidget {
     required this.confirmationController,
     required this.passwordIsVisible,
     required this.confirmationIsVisible,
-    required this.showLocalValidationNotice,
+    required this.submissionError,
+    required this.isSubmitting,
     required this.inputDecoration,
     required this.validateEmail,
     required this.validatePassword,
@@ -219,7 +242,8 @@ class _AuthFormCard extends StatelessWidget {
   final TextEditingController confirmationController;
   final bool passwordIsVisible;
   final bool confirmationIsVisible;
-  final bool showLocalValidationNotice;
+  final String? submissionError;
+  final bool isSubmitting;
   final InputDecoration Function({
     required String label,
     required IconData icon,
@@ -230,7 +254,7 @@ class _AuthFormCard extends StatelessWidget {
   final String? Function(String?) validatePassword;
   final VoidCallback onTogglePassword;
   final VoidCallback onToggleConfirmation;
-  final VoidCallback onSubmit;
+  final Future<void> Function() onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +272,8 @@ class _AuthFormCard extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               isRegistration
-                  ? 'Lengkapi data berikut untuk validasi lokal.'
-                  : 'Masukkan email dan kata sandi untuk validasi lokal.',
+                  ? 'Lengkapi data berikut untuk membuat akun.'
+                  : 'Masukkan email dan kata sandi untuk masuk.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (isRegistration) ...[
@@ -353,27 +377,36 @@ class _AuthFormCard extends StatelessWidget {
                 },
               ),
             ],
-            if (showLocalValidationNotice) ...[
+            if (submissionError != null) ...[
               const SizedBox(height: 18),
-              const SiagaNotice(
-                title: 'Isian valid secara lokal',
-                message: 'Autentikasi belum tersedia. Tidak ada data yang dikirim ke server.',
+              SiagaNotice(
+                title: 'Belum dapat melanjutkan',
+                message: submissionError!,
                 tone: SiagaTone.info,
-                icon: Icons.check_circle_outline_rounded,
+                icon: Icons.info_outline_rounded,
               ),
             ],
             const SizedBox(height: 20),
             SizedBox(
               height: 50,
               child: FilledButton.icon(
-                onPressed: onSubmit,
-                icon: Icon(
-                  isRegistration
-                      ? Icons.person_add_alt_1_rounded
-                      : Icons.login_rounded,
-                ),
+                onPressed: isSubmitting ? null : onSubmit,
+                icon: isSubmitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        isRegistration
+                            ? Icons.person_add_alt_1_rounded
+                            : Icons.login_rounded,
+                      ),
                 label: Text(
-                  isRegistration ? 'Validasi pendaftaran' : 'Validasi login',
+                  isSubmitting
+                      ? 'Mohon tunggu...'
+                      : isRegistration
+                      ? 'Buat akun'
+                      : 'Masuk',
                 ),
               ),
             ),
@@ -439,14 +472,14 @@ class _AuthSidePanel extends StatelessWidget {
           ),
           SizedBox(height: 22),
           SiagaBullet(
-            text: 'Validasi form berjalan lokal pada perangkat.',
+            text: 'Data akun diperiksa dengan aman.',
             icon: Icons.check_circle_outline_rounded,
             color: Color(0xFF86EFAC),
           ),
           SiagaBullet(
-            text: 'Login dan registrasi server belum dihubungkan.',
-            icon: Icons.info_outline_rounded,
-            color: Color(0xFFFCD34D),
+            text: 'Hak akses akun ditentukan oleh sistem',
+            icon: Icons.verified_user_outlined,
+            color: Color(0xFFBFDBFE),
           ),
         ],
       ),

@@ -14,7 +14,16 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ProfilePage(onOpenSection: (_) {})),
+        home: Scaffold(
+          body: ProfilePage(
+            onOpenSection: (_) {},
+            user: null,
+            isLoading: false,
+            statusError: null,
+            onRetryStatus: () {},
+            onLogout: () async {},
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();

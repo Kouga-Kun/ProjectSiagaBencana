@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class UserAuthJsonFeatureTest extends TestCase
@@ -123,5 +125,69 @@ class UserAuthJsonFeatureTest extends TestCase
         $this->getJson('/api/auth/status')
             ->assertOk()
             ->assertJsonPath('authenticated', false);
+    }
+
+    public function test_authenticated_user_can_update_their_own_profile_and_photo(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create([
+            'name' => 'Budi Lama',
+            'email' => 'budi@example.com',
+        ]);
+        $otherUser = User::factory()->create([
+            'name' => 'Warga Lain',
+            'email' => 'warga@example.com',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post('/api/profile', [
+                'id' => $otherUser->id,
+                'name' => 'Budi Santoso',
+                'email' => 'hacker@example.com',
+                'role' => 'petugas',
+                'phone' => '081234567890',
+                'address' => 'Jl. Khatib Sulaiman No. 10, Kota Padang',
+                'photo' => UploadedFile::fake()->image('avatar.png', 200, 200),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJsonPath('message', 'Informasi profil berhasil diperbarui.')
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.name', 'Budi Santoso')
+            ->assertJsonPath('user.email', 'budi@example.com')
+            ->assertJsonPath('user.role', 'warga')
+            ->assertJsonPath('user.phone', '081234567890')
+            ->assertJsonPath('user.address', 'Jl. Khatib Sulaiman No. 10, Kota Padang');
+
+        $user->refresh();
+        $otherUser->refresh();
+
+        $this->assertSame('Budi Santoso', $user->name);
+        $this->assertSame('budi@example.com', $user->email);
+        $this->assertSame('warga', $user->role);
+        $this->assertSame('081234567890', $user->phone);
+        $this->assertSame('Jl. Khatib Sulaiman No. 10, Kota Padang', $user->address);
+        $this->assertNotNull($user->profile_photo_path);
+        Storage::disk('public')->assertExists($user->profile_photo_path);
+
+        $this->assertSame('Warga Lain', $otherUser->name);
+
+        $this->get('/api/profile/photo/'.$user->id)
+            ->assertOk();
+    }
+
+    public function test_profile_update_validates_required_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->postJson('/api/profile', [
+                'name' => '',
+                'phone' => 'abc',
+                'address' => '123',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name', 'phone', 'address']);
     }
 }

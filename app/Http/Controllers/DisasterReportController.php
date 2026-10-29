@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DisasterReport;
+use App\Models\SosRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -150,6 +151,7 @@ class DisasterReportController extends Controller
         }
 
         $reports = $reportsQuery->orderByDesc('occurred_at')->orderByDesc('id')->paginate(10)->withQueryString();
+        $isReportStaff = $request->user()?->isReportStaff() ?? false;
 
         return view('laporan', [
             'reports' => $reports,
@@ -163,7 +165,16 @@ class DisasterReportController extends Controller
             'affectedAreaCount' => DisasterReport::query()->whereNotNull('affected_area')->where('affected_area', '<>', '')->distinct()->count('affected_area'),
             'pendingReports' => DisasterReport::query()->where('verification_status', DisasterReport::STATUS_PENDING)->count(),
             'editingReport' => $editingReport,
-            'isReportStaff' => $request->user()?->isReportStaff() ?? false,
+            'isReportStaff' => $isReportStaff,
+            'sosRequests' => $isReportStaff
+                ? SosRequest::query()->with(['user', 'handler'])->orderByDesc('created_at')->orderByDesc('id')->limit(25)->get()
+                : collect(),
+            'sosStats' => $isReportStaff ? [
+                'total' => SosRequest::count(),
+                'menunggu' => SosRequest::where('status', SosRequest::STATUS_WAITING)->count(),
+                'diproses' => SosRequest::where('status', SosRequest::STATUS_PROCESSING)->count(),
+                'selesai' => SosRequest::where('status', SosRequest::STATUS_COMPLETED)->count(),
+            ] : null,
         ]);
     }
 }

@@ -4,39 +4,44 @@
 
 @section('content')
 <style>
-    .page-header { margin-bottom: 24px; }
-    .page-title { color: var(--primary-color); margin-bottom: 8px; font-size: 28px; }
-    .page-desc { color: var(--text-muted); font-size: 16px; line-height: 1.6; max-width: 650px; }
+    .page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .page-title { color: var(--primary-color); margin: 0 0 8px; font-size: 28px; }
+    .page-desc { color: var(--text-muted); font-size: 16px; line-height: 1.6; max-width: 680px; margin: 0; }
+    .filter-bar { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; margin-bottom: 28px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .filter-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .filter-input { flex: 1; min-width: 220px; padding: 11px 14px; border: 1px solid var(--border-color); border-radius: 10px; font: inherit; font-size: 14px; }
+    .category-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .category-pill { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid var(--border-color); color: var(--text-dark); background: #f8fafc; transition: all 0.2s; }
+    .category-pill.active, .category-pill:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
-    /* =========================================
-       KARTU HEADLINE UTAMA
-       ========================================= */
     .headline-card {
         background: var(--bg-card);
-        border-radius: 12px;
+        border-radius: 14px;
         overflow: hidden;
         box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         border: 1px solid var(--border-color);
-        margin-bottom: 40px;
+        margin-bottom: 36px;
         display: flex;
         flex-direction: column;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .headline-card:hover { 
-        transform: translateY(-4px); 
-        box-shadow: 0 12px 20px rgba(0,0,0,0.08); 
+    .headline-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.08);
     }
-    
     .headline-img {
         width: 100%;
         height: 250px;
-        /* Menggunakan gambar placeholder dari Unsplash bertema badai laut */
-        background-image: url('https://images.unsplash.com/photo-1527482797697-8795b05a13fe?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'); 
+        background-color: #dbeafe;
         background-size: cover;
         background-position: center;
         position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary-color);
+        font-size: 48px;
     }
-    
     .headline-badge {
         position: absolute;
         top: 16px;
@@ -46,167 +51,186 @@
         padding: 6px 14px;
         border-radius: 6px;
         font-weight: bold;
-        font-size: 14px;
+        font-size: 13px;
         letter-spacing: 0.5px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    
-    .headline-content { padding: 24px; }
-    .headline-title { margin: 0 0 12px 0; font-size: 24px; color: var(--text-dark); line-height: 1.3; }
-    .headline-date { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; display: block; font-weight: 500; }
-    .headline-excerpt { color: var(--text-muted); line-height: 1.6; margin-bottom: 24px; }
-    
-    .btn-read { 
-        display: inline-block; padding: 10px 20px; 
-        background: var(--primary-color); color: white; 
-        border-radius: 6px; text-decoration: none; 
-        font-weight: 600; transition: background 0.2s; 
+    .headline-content { padding: 26px; }
+    .headline-meta { font-size: 13.5px; color: var(--text-muted); margin-bottom: 10px; display: block; font-weight: 600; }
+    .headline-title { margin: 0 0 12px; font-size: 24px; color: var(--text-dark); line-height: 1.3; }
+    .headline-excerpt { color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; }
+    .btn-read {
+        display: inline-block; padding: 10px 18px;
+        background: var(--primary-color); color: white;
+        border-radius: 8px; text-decoration: none;
+        font-weight: 700; transition: background 0.2s;
+        border: 0; cursor: pointer; font-size: 14px;
     }
     .btn-read:hover { background: var(--primary-hover); color: white; text-decoration: none; }
 
-    /* =========================================
-       GRID BERITA TERKINI
-       ========================================= */
-    .news-section-title { 
-        font-size: 20px; color: var(--text-dark); 
-        margin-bottom: 20px; border-bottom: 2px solid var(--border-color); 
-        padding-bottom: 12px; 
+    .news-section-title {
+        font-size: 20px; color: var(--text-dark);
+        margin-bottom: 20px; border-bottom: 2px solid var(--border-color);
+        padding-bottom: 12px;
     }
     .news-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
         gap: 24px;
     }
     .news-card {
         background: var(--bg-card);
-        border-radius: 10px;
+        border-radius: 12px;
         border: 1px solid var(--border-color);
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        text-decoration: none;
+        color: inherit;
         transition: box-shadow 0.2s ease, transform 0.2s ease;
     }
-    .news-card:hover { 
-        box-shadow: 0 8px 15px rgba(0,0,0,0.06); 
+    .news-card:hover {
+        box-shadow: 0 8px 18px rgba(0,0,0,0.07);
         transform: translateY(-3px);
     }
-    .news-img { height: 180px; background-color: #e2e8f0; background-size: cover; background-position: center; }
+    .news-img {
+        height: 185px;
+        background-color: #e2e8f0;
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+    }
     .news-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-    .news-category { font-size: 12px; font-weight: bold; color: var(--color-warning); text-transform: uppercase; margin-bottom: 8px; }
-    .news-title { font-size: 17px; margin: 0 0 12px 0; color: var(--text-dark); line-height: 1.4; }
-    .news-date { font-size: 13px; color: var(--text-muted); margin-top: auto; }
-    
-    /* Layout Desktop: Headline memanjang ke samping */
+    .news-category { font-size: 12px; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-bottom: 8px; }
+    .news-title { font-size: 17.5px; margin: 0 0 10px; color: var(--text-dark); line-height: 1.4; }
+    .news-summary { font-size: 14px; color: var(--text-muted); line-height: 1.55; margin: 0 0 14px; }
+    .news-date { font-size: 12.5px; color: var(--text-muted); margin-top: auto; font-weight: 600; }
+    .empty-box {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 36px 24px;
+        text-align: center;
+        color: var(--text-muted);
+    }
     @media (min-width: 768px) {
         .headline-card { flex-direction: row; }
-        .headline-img { width: 55%; height: auto; min-height: 320px; }
-        .headline-content { width: 45%; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        .headline-img { width: 52%; height: auto; min-height: 310px; }
+        .headline-content { width: 48%; padding: 36px; display: flex; flex-direction: column; justify-content: center; }
     }
 </style>
 
 <div class="page-header">
-    <h1 class="page-title">Berita & Info Terkini</h1>
-    <p class="page-desc">Dapatkan pembaruan terbaru mengenai peringatan cuaca, kondisi darurat, dan langkah penanganan bencana dari instansi resmi di wilayah Sumatera Barat.</p>
+    <div>
+        <h1 class="page-title">Pusat Informasi & Berita Kebencanaan</h1>
+        <p class="page-desc">Berita bencana, informasi peringatan dini, informasi wilayah, dan artikel edukasi kesiapsiagaan resmi pada aplikasi SiagaBencana.</p>
+    </div>
+    @auth
+        @if (auth()->user()->isReportStaff())
+            <a href="{{ route('petugas.berita.index') }}" class="btn-read">⚙️ Kelola Berita (Admin/Petugas)</a>
+        @endif
+    @endauth
 </div>
 
-<!-- HEADLINE SECTION -->
-<article class="headline-card">
-    <div class="headline-img">
-        <span class="headline-badge">HEADLINE</span>
+<section class="filter-bar" aria-label="Pencarian dan Filter Berita">
+    <form method="GET" action="{{ route('berita') }}" class="filter-form">
+        @if (!empty($filters['category']))
+            <input type="hidden" name="category" value="{{ $filters['category'] }}">
+        @endif
+        <input
+            type="text"
+            name="search"
+            value="{{ $filters['search'] }}"
+            placeholder="Cari berita berdasarkan judul..."
+            class="filter-input"
+        >
+        <button type="submit" class="btn-read">Cari Berita</button>
+        @if (!empty($filters['search']) || !empty($filters['category']))
+            <a href="{{ route('berita') }}" class="category-pill">Reset Filter</a>
+        @endif
+    </form>
+
+    <div class="category-pills">
+        <a
+            href="{{ route('berita', array_filter(['search' => $filters['search']])) }}"
+            class="category-pill {{ empty($filters['category']) ? 'active' : '' }}"
+        >
+            Semua Kategori
+        </a>
+        @foreach ($categories as $category)
+            <a
+                href="{{ route('berita', array_filter(['search' => $filters['search'], 'category' => $category])) }}"
+                class="category-pill {{ $filters['category'] === $category ? 'active' : '' }}"
+            >
+                {{ $category }}
+            </a>
+        @endforeach
     </div>
-    <div class="headline-content">
-        <span class="headline-date">23 Oktober 2026 • 14:30 WIB</span>
-        <h2 class="headline-title">Peringatan Dini Cuaca Ekstrem di Pesisir Pantai Padang</h2>
-        <p class="headline-excerpt">BMKG merilis peringatan dini terkait potensi angin kencang dan gelombang pasang yang diperkirakan melanda pesisir barat Sumatera. Nelayan dan warga pesisir diimbau untuk tidak beraktivitas di laut hingga kondisi dinyatakan aman.</p>
-        <div>
-            <a href="#" class="btn-read">Baca Selengkapnya →</a>
+</section>
+
+@if ($featuredArticle)
+    @php
+        $featuredImageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($featuredArticle);
+        $featuredDate = \App\Http\Controllers\NewsArticleController::formatPublishedDate($featuredArticle->published_at ?? $featuredArticle->created_at);
+    @endphp
+    <article class="headline-card">
+        <div
+            class="headline-img"
+            @if ($featuredImageUrl)
+                style="background-image: url('{{ $featuredImageUrl }}');"
+            @endif
+        >
+            @if (!$featuredImageUrl)
+                📰
+            @endif
+            <span class="headline-badge">BERITA UTAMA · {{ strtoupper($featuredArticle->category) }}</span>
         </div>
+        <div class="headline-content">
+            <span class="headline-meta">{{ $featuredDate }} • Sumber: {{ $featuredArticle->source }}</span>
+            <h2 class="headline-title">{{ $featuredArticle->title }}</h2>
+            <p class="headline-excerpt">{{ $featuredArticle->summary }}</p>
+            <div>
+                <a href="{{ route('berita.show', $featuredArticle->slug) }}" class="btn-read">Baca Selengkapnya →</a>
+            </div>
+        </div>
+    </article>
+@endif
+
+<h3 class="news-section-title">Berita Terbaru</h3>
+
+@if ($articles->isEmpty())
+    <div class="empty-box">
+        <h4 style="color: var(--text-dark); margin: 0 0 8px; font-size: 18px;">Belum ada berita yang ditampilkan</h4>
+        <p style="margin: 0;">Belum ada berita yang dipublikasikan atau cocok dengan kriteria pencarian dan kategori yang dipilih.</p>
     </div>
-</article>
-
-<!-- INFO TERKINI SECTION -->
-<h3 class="news-section-title">Info Terkini</h3>
-<div class="news-grid">
-    
-    <!-- Berita 1 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1605814511995-10332822a106?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-danger);">INFO GEMPA</span>
-            <h4 class="news-title">Update Penanganan Dampak Gempa Bumi di Sektor 1 Padang</h4>
-            <span class="news-date">23 Oktober 2026 • 10:15 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 2 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1542838321-419b4b0ed183?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-danger);">INFO GEMPA</span>
-            <h4 class="news-title">Update Penanganan Dampak Gempa Bumi di Sektor 2 Padang</h4>
-            <span class="news-date">22 Oktober 2026 • 18:40 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 3 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1603597384797-15206016e78f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-warning);">WASPADA</span>
-            <h4 class="news-title">Erupsi Gunung Marapi, Warga Sumatera Barat Diharapkan Waspada</h4>
-            <span class="news-date">21 Oktober 2026 • 09:00 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 4 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1542099981-b51fb0d31ff2?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--primary-color);">INFO BANJIR</span>
-            <h4 class="news-title">Banjir Bandang di Pesisir Selatan, Akses Jalan Lintas Sumatera Terputus</h4>
-            <span class="news-date">20 Oktober 2026 • 14:20 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 5 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-warning);">CUACA BURUK</span>
-            <h4 class="news-title">BMKG Prediksi Hujan Lebat Disertai Petir di Wilayah Padang Pariaman</h4>
-            <span class="news-date">19 Oktober 2026 • 07:30 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 6 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1593113630400-ea4288922497?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-safe);">BANTUAN SOSIAL</span>
-            <h4 class="news-title">Distribusi Logistik dan Obat-obatan Tiba di Posko Pengungsian Bypass</h4>
-            <span class="news-date">18 Oktober 2026 • 16:45 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 7 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1623080775986-13a893049f50?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--color-danger);">LALU LINTAS</span>
-            <h4 class="news-title">Tanah Longsor di Sitinjau Lauik, Sistem Buka Tutup Jalur Diberlakukan</h4>
-            <span class="news-date">17 Oktober 2026 • 11:10 WIB</span>
-        </div>
-    </article>
-
-    <!-- Berita 8 -->
-    <article class="news-card">
-        <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1584285422896-1b5e5233c06d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80');"></div>
-        <div class="news-content">
-            <span class="news-category" style="color: var(--primary-color);">INFO RESMI</span>
-            <h4 class="news-title">Status Siaga Darurat Bencana Hidrometeorologi Ditetapkan di Sumbar</h4>
-            <span class="news-date">16 Oktober 2026 • 09:00 WIB</span>
-        </div>
-    </article>
-
-</div>
+@else
+    <div class="news-grid">
+        @foreach ($articles as $article)
+            @php
+                $imageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($article);
+                $dateFormatted = \App\Http\Controllers\NewsArticleController::formatPublishedDate($article->published_at ?? $article->created_at);
+            @endphp
+            <a href="{{ route('berita.show', $article->slug) }}" class="news-card">
+                <div
+                    class="news-img"
+                    @if ($imageUrl)
+                        style="background-image: url('{{ $imageUrl }}');"
+                    @endif
+                >
+                    @if (!$imageUrl)
+                        📰
+                    @endif
+                </div>
+                <div class="news-content">
+                    <span class="news-category">{{ $article->category }}</span>
+                    <h4 class="news-title">{{ $article->title }}</h4>
+                    <p class="news-summary">{{ \Illuminate\Support\Str::limit($article->summary, 120) }}</p>
+                    <span class="news-date">{{ $dateFormatted }} • {{ $article->source }}</span>
+                </div>
+            </a>
+        @endforeach
+    </div>
+@endif
 @endsection

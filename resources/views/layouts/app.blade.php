@@ -46,7 +46,7 @@
         .topbar {
             background: var(--primary-color);
             color: white;
-            padding: 18px 6%; /* Sedikit lebih tebal agar proporsional dengan font besar */
+            padding: 18px 6%;
             display: flex;
             align-items: center;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -56,7 +56,7 @@
         }
 
         .brand {
-            font-size: 24px; /* Logo teks juga sedikit dibesarkan */
+            font-size: 24px;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -65,30 +65,28 @@
         }
 
         .nav {
-            flex: 1; /* Memakan sisa ruang yang ada */
+            flex: 1;
             display: flex;
-            justify-content: center; /* Memaksa menu ke tengah */
-            gap: 36px; /* Jarak antar teks diperlebar agar tidak sesak */
-            
-            /* Trik offset: mengimbangi lebar logo di kiri agar menu benar-benar di tengah layar */
-            margin-right: 150px; 
+            justify-content: center;
+            gap: 28px;
+            margin-right: 120px; 
         }
 
         .nav a {
             color: white;
             text-decoration: none;
-            font-size: 16px; /* Ukuran font diperbesar (sebelumnya 14px) */
-            font-weight: 600; /* Teks lebih tebal/bold */
-            letter-spacing: 0.5px;
+            font-size: 15.5px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
             opacity: 0.85;
             transition: all 0.2s ease;
             padding-bottom: 4px;
             border-bottom: 2px solid transparent;
+            white-space: nowrap;
         }
 
         .nav a:hover { 
             opacity: 1;
-            /* Mengganti garis bawah biasa dengan border yang lebih elegan */
             text-decoration: none; 
             border-bottom: 2px solid white;
         }
@@ -100,7 +98,7 @@
             width: 88%;
             max-width: 1400px;
             margin: 0 auto;
-            flex: 1; /* Memastikan footer selalu di bawah */
+            flex: 1;
         }
 
         .content { 
@@ -112,7 +110,7 @@
            BOTTOM NAVIGATION (MOBILE)
            ----------------------------------------- */
         .bottom-nav {
-            display: none; /* Disembunyikan di desktop */
+            display: none;
             position: fixed;
             bottom: 0;
             left: 0;
@@ -150,13 +148,12 @@
         footer {
             text-align: center;
             padding: 24px;
-            background: #0f172a; /* Biru dongker sangat gelap */
+            background: #0f172a;
             color: #94a3b8;
             font-size: 13px;
             margin-top: auto;
         }
 
-        /* Kelas bantuan global - Bisa dipakai di file blade mana saja */
         .bg-danger { background-color: var(--color-danger) !important; color: white !important; }
         .text-danger { color: var(--color-danger) !important; }
         .border-danger { border-color: var(--color-danger) !important; }
@@ -173,17 +170,16 @@
            RESPONSIVE MOBILE RULES
            ----------------------------------------- */
         @media (max-width: 768px) {
-            body { padding-bottom: 65px; } /* Ruang aman agar konten tak tertimpa nav bawah */
-            .topbar { padding: 16px 5%; justify-content: center; } /* Logo ke tengah */
-            .nav { display: none; } /* Matikan menu teks atas */
-            .bottom-nav { display: flex; } /* Nyalakan menu bawah */
+            body { padding-bottom: 65px; }
+            .topbar { padding: 16px 5%; justify-content: center; }
+            .nav { display: none; }
+            .bottom-nav { display: flex; }
             .container { width: 92%; }
-            footer { padding-bottom: 90px; } /* Naikkan footer sedikit di atas nav bawah */
+            footer { padding-bottom: 90px; }
         }
     </style>
     @stack('styles')
     <style>
-        /* Sedikit menaikkan ketebalan teks agar lebih nyaman dibaca di seluruh halaman. */
         p, li { font-weight: 500; }
     </style>
 </head>
@@ -199,6 +195,10 @@
             <a href="{{ route('mitigasi') }}">Mitigasi</a>
             <a href="{{ route('laporan') }}">Laporan</a>
             @auth
+                @if (auth()->user()->isReportStaff())
+                    <a href="{{ route('petugas.sos.index') }}">Dashboard SOS</a>
+                    <a href="{{ route('petugas.berita.index') }}">Kelola Berita</a>
+                @endif
                 <a href="{{ route('profil') }}">Profil</a>
             @else
                 <a href="{{ route('profil') }}">Profil</a>
@@ -226,7 +226,7 @@
             <span class="icon">🏃</span>
             <span>Evakuasi</span>
         </a>
-        <a href="{{ route('berita') }}" class="bottom-nav-item {{ request()->routeIs('berita') ? 'active' : '' }}">
+        <a href="{{ route('berita') }}" class="bottom-nav-item {{ request()->routeIs('berita*') ? 'active' : '' }}">
             <span class="icon">📰</span>
             <span>Berita</span>
         </a>

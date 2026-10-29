@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Laporan Riwayat Bencana - SiagaBencana')
 
@@ -169,6 +169,146 @@
     </section>
 
     @if ($isReportStaff)
+        <section class="info-panel" aria-labelledby="sos-dashboard-title" style="border-color: #fecaca;">
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <h2 id="sos-dashboard-title" style="margin: 0 0 6px; color: #991b1b;">🆘 Pengelolaan Permintaan Bantuan Darurat (SOS)</h2>
+                    <p class="description">Pantau lokasi koordinat pengguna pada peta, lihat detail permintaan, dan perbarui status penanganan SOS.</p>
+                </div>
+                <a class="report-button danger" href="{{ route('petugas.sos.index') }}">Buka Halaman Penuh SOS</a>
+            </div>
+
+            @if (!empty($sosStats))
+                <div class="stats" style="margin-bottom: 18px;">
+                    <article class="stat-card"><p>Total SOS</p><div class="stat-value">{{ $sosStats['total'] ?? 0 }}</div><small>Semua permintaan masuk</small></article>
+                    <article class="stat-card"><p>Menunggu</p><div class="stat-value" style="color: #dc2626;">{{ $sosStats['menunggu'] ?? 0 }}</div><small>Perlu segera ditangani</small></article>
+                    <article class="stat-card"><p>Diproses</p><div class="stat-value" style="color: #d97706;">{{ $sosStats['diproses'] ?? 0 }}</div><small>Sedang dalam penanganan</small></article>
+                    <article class="stat-card"><p>Selesai</p><div class="stat-value" style="color: #059669;">{{ $sosStats['selesai'] ?? 0 }}</div><small>Penanganan tuntas</small></article>
+                </div>
+            @endif
+
+            <div id="staff-sos-map" style="height: 340px; width: 100%; border-radius: 12px; border: 1px solid #cbd5e1; margin-bottom: 18px; z-index: 1;"></div>
+
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Waktu Permintaan</th>
+                            <th>Nama & Telepon Pengguna</th>
+                            <th>Lokasi (Lat, Lng & Alamat)</th>
+                            <th>Status</th>
+                            <th>Aksi Petugas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($sosRequests ?? [] as $sos)
+                            <tr>
+                                <td><strong>#{{ $sos->id }}</strong></td>
+                                <td>{{ $sos->created_at?->format('d M Y, H:i:s') ?? '-' }}</td>
+                                <td>
+                                    <strong>{{ $sos->user_name }}</strong><br>
+                                    <span>📞 {{ $sos->user_phone ?: 'Nomor belum diatur' }}</span>
+                                </td>
+                                <td>
+                                    <code>{{ number_format((float) $sos->latitude, 6, '.', '') }}, {{ number_format((float) $sos->longitude, 6, '.', '') }}</code>
+                                    @if ($sos->address)
+                                        <br><small>{{ $sos->address }}</small>
+                                    @endif
+                                    <br>
+                                    <button type="button" class="report-button secondary" style="padding: 5px 9px; font-size: 12px; margin-top: 6px;" onclick="focusSosMarker({{ (float) $sos->latitude }}, {{ (float) $sos->longitude }}, {{ $sos->id }})">📍 Fokus di Peta</button>
+                                    <a class="report-button secondary" style="padding: 5px 9px; font-size: 12px; margin-top: 6px;" href="{{ route('petugas.sos.index', ['selected' => $sos->id]) }}">Detail</a>
+                                </td>
+                                <td>
+                                    @php
+                                        $sosBadgeClass = match ($sos->status) {
+                                            'selesai' => 'status-verified',
+                                            'diproses' => 'status-pending',
+                                            default => 'status-rejected',
+                                        };
+                                    @endphp
+                                    <span class="status-badge {{ $sosBadgeClass }}">{{ $sos->statusLabel() }}</span>
+                                    @if ($sos->handled_at)
+                                        <br><small>{{ $sos->handled_at->format('d M Y, H:i') }}@if ($sos->handler) · {{ $sos->handler->name }}@endif</small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="record-actions">
+                                        <form method="POST" action="{{ route('petugas.sos.status', $sos) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button class="report-button" style="background: #d97706;" type="submit" name="status" value="diproses">Diproses</button>
+                                            <button class="report-button success" type="submit" name="status" value="selesai">Selesai</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="empty-state" colspan="6">Belum ada permintaan bantuan darurat (SOS) yang masuk.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        @php
+            $staffSosMapItems = ($sosRequests ?? collect())->map(fn ($item) => [
+                'id' => $item->id,
+                'user_name' => $item->user_name,
+                'user_phone' => $item->user_phone ?: 'Belum diatur',
+                'latitude' => (float) $item->latitude,
+                'longitude' => (float) $item->longitude,
+                'address' => $item->address ?: '-',
+                'status_label' => $item->statusLabel(),
+                'created_at' => $item->created_at?->format('d M Y, H:i:s') ?? '-',
+            ])->values();
+        @endphp
+
+        @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const mapEl = document.getElementById('staff-sos-map');
+                if (!mapEl || typeof L === 'undefined') return;
+
+                const sosItems = @json($staffSosMapItems);
+
+                const defaultCenter = sosItems.length > 0
+                    ? [sosItems[0].latitude, sosItems[0].longitude]
+                    : [-0.9471, 100.4172];
+
+                const sosMap = L.map('staff-sos-map').setView(defaultCenter, 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(sosMap);
+
+                const markersById = {};
+                sosItems.forEach(function (item) {
+                    const marker = L.marker([item.latitude, item.longitude]).addTo(sosMap);
+                    marker.bindPopup(
+                        '<strong>SOS #' + item.id + ' - ' + item.user_name + '</strong><br>' +
+                        'Telepon: ' + item.user_phone + '<br>' +
+                        'Koordinat: ' + item.latitude.toFixed(6) + ', ' + item.longitude.toFixed(6) + '<br>' +
+                        'Lokasi: ' + item.address + '<br>' +
+                        'Waktu: ' + item.created_at + '<br>' +
+                        'Status: <strong>' + item.status_label + '</strong>'
+                    );
+                    markersById[item.id] = marker;
+                });
+
+                window.focusSosMarker = function (lat, lng, id) {
+                    sosMap.setView([lat, lng], 16, { animate: true });
+                    if (markersById[id]) {
+                        markersById[id].openPopup();
+                    }
+                    mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
+            });
+        </script>
+        @endpush
+
         <form method="POST" action="{{ route('report-staff.logout') }}">@csrf<button class="report-button secondary" type="submit">Keluar dari akun petugas</button></form>
     @endif
 </div>

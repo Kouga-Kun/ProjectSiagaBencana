@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DisasterReportApiController;
 use App\Http\Controllers\DisasterReportController;
+use App\Http\Controllers\EvacuationApiController;
 use App\Http\Controllers\NewsArticleController;
 use App\Http\Controllers\ReportStaffAuthController;
 use App\Http\Controllers\SosRequestController;
@@ -200,3 +201,16 @@ Route::get('/profil', [UserAuthController::class, 'showProfile'])
 
 Route::get('/api/peringatan-bencana', [WeatherAlertController::class, 'index'])
     ->name('api.peringatan');
+
+// API Peta Evakuasi, Zona Bencana, dan Titik Evakuasi untuk Flutter
+Route::get('/api/evakuasi', [EvacuationApiController::class, 'index'])
+    ->name('api.evakuasi.index');
+
+Route::get('/api/evakuasi/zona', [EvacuationApiController::class, 'zones'])
+    ->name('api.evakuasi.zones');
+
+Route::get('/api/evakuasi/titik', [EvacuationApiController::class, 'points'])
+    ->name('api.evakuasi.points');
+
+Route::get('/api/evakuasi/cek-lokasi', [EvacuationApiController::class, 'checkLocation'])
+    ->name('api.evakuasi.check-location');

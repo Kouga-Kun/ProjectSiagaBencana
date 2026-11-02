@@ -125,7 +125,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Pusat Informasi & Berita Kebencanaan</h1>
-        <p class="page-desc">Berita bencana, informasi peringatan dini, informasi wilayah, dan artikel edukasi kesiapsiagaan resmi pada aplikasi SiagaBencana.</p>
+        <p class="page-desc">Berita bencana, informasi peringatan dini, dan artikel edukasi kesiapsiagaan resmi pada aplikasi SiagaBencana.</p>
     </div>
     @auth
         @if (auth()->user()->isReportStaff())
@@ -133,6 +133,34 @@
         @endif
     @endauth
 </div>
+
+@if ($featuredArticle)
+    @php
+        $featuredImageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($featuredArticle);
+        $featuredDate = \App\Http\Controllers\NewsArticleController::formatPublishedDate($featuredArticle->published_at ?? $featuredArticle->created_at);
+    @endphp
+    <article class="headline-card" aria-label="Headline News">
+        <div
+            class="headline-img"
+            @if ($featuredImageUrl)
+                style="background-image: url('{{ $featuredImageUrl }}');"
+            @endif
+        >
+            @if (!$featuredImageUrl)
+                📰
+            @endif
+            <span class="headline-badge">HEADLINE NEWS · {{ strtoupper($featuredArticle->category) }}</span>
+        </div>
+        <div class="headline-content">
+            <span class="headline-meta">{{ $featuredDate }} • Sumber: {{ $featuredArticle->source }}</span>
+            <h2 class="headline-title">{{ $featuredArticle->title }}</h2>
+            <p class="headline-excerpt">{{ $featuredArticle->summary }}</p>
+            <div>
+                <a href="{{ route('berita.show', $featuredArticle->slug) }}" class="btn-read">Baca Selengkapnya →</a>
+            </div>
+        </div>
+    </article>
+@endif
 
 <section class="filter-bar" aria-label="Pencarian dan Filter Berita">
     <form method="GET" action="{{ route('berita') }}" class="filter-form">
@@ -157,7 +185,7 @@
             href="{{ route('berita', array_filter(['search' => $filters['search']])) }}"
             class="category-pill {{ empty($filters['category']) ? 'active' : '' }}"
         >
-            Semua Kategori
+            Semua Berita
         </a>
         @foreach ($categories as $category)
             <a
@@ -170,39 +198,11 @@
     </div>
 </section>
 
-@if ($featuredArticle)
-    @php
-        $featuredImageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($featuredArticle);
-        $featuredDate = \App\Http\Controllers\NewsArticleController::formatPublishedDate($featuredArticle->published_at ?? $featuredArticle->created_at);
-    @endphp
-    <article class="headline-card">
-        <div
-            class="headline-img"
-            @if ($featuredImageUrl)
-                style="background-image: url('{{ $featuredImageUrl }}');"
-            @endif
-        >
-            @if (!$featuredImageUrl)
-                📰
-            @endif
-            <span class="headline-badge">BERITA UTAMA · {{ strtoupper($featuredArticle->category) }}</span>
-        </div>
-        <div class="headline-content">
-            <span class="headline-meta">{{ $featuredDate }} • Sumber: {{ $featuredArticle->source }}</span>
-            <h2 class="headline-title">{{ $featuredArticle->title }}</h2>
-            <p class="headline-excerpt">{{ $featuredArticle->summary }}</p>
-            <div>
-                <a href="{{ route('berita.show', $featuredArticle->slug) }}" class="btn-read">Baca Selengkapnya →</a>
-            </div>
-        </div>
-    </article>
-@endif
-
-<h3 class="news-section-title">Berita Terbaru</h3>
+<h3 class="news-section-title">Berita Bencana Lainnya</h3>
 
 @if ($articles->isEmpty())
     <div class="empty-box">
-        <h4 style="color: var(--text-dark); margin: 0 0 8px; font-size: 18px;">Belum ada berita yang ditampilkan</h4>
+        <h4 style="color: var(--text-dark); margin: 0 0 8px; font-size: 18px;">Berita tidak tersedia</h4>
         <p style="margin: 0;">Belum ada berita yang dipublikasikan atau cocok dengan kriteria pencarian dan kategori yang dipilih.</p>
     </div>
 @else

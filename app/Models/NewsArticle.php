@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\NewsArticleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,21 +10,35 @@ use Illuminate\Support\Str;
 
 class NewsArticle extends Model
 {
+    /** @use HasFactory<NewsArticleFactory> */
     use HasFactory;
 
-    public const CATEGORY_DISASTER = 'Berita Bencana';
+    public const CATEGORY_DISASTER = 'Bencana';
+
+    public const CATEGORY_DISASTER_LEGACY = 'Berita Bencana';
+
     public const CATEGORY_EARLY_WARNING = 'Peringatan Dini';
+
     public const CATEGORY_EDUCATION = 'Edukasi Kebencanaan';
+
     public const CATEGORY_REGIONAL_INFO = 'Informasi Wilayah';
 
     public const CATEGORIES = [
         self::CATEGORY_DISASTER,
         self::CATEGORY_EARLY_WARNING,
         self::CATEGORY_EDUCATION,
+    ];
+
+    public const ACCEPTED_CATEGORIES = [
+        self::CATEGORY_DISASTER,
+        self::CATEGORY_DISASTER_LEGACY,
+        self::CATEGORY_EARLY_WARNING,
+        self::CATEGORY_EDUCATION,
         self::CATEGORY_REGIONAL_INFO,
     ];
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PUBLISHED = 'published';
 
     protected $fillable = [
@@ -40,6 +55,9 @@ class NewsArticle extends Model
         'author_id',
     ];
 
+    /**
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -56,6 +74,11 @@ class NewsArticle extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function isHeadline(): bool
+    {
+        return (bool) $this->is_featured;
     }
 
     public function statusLabel(): string
@@ -89,4 +112,3 @@ class NewsArticle extends Model
         return $slug;
     }
 }
-

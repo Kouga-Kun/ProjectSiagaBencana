@@ -18,6 +18,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_PUBLIC = 'warga';
+
+    public const ROLE_REPORT_STAFF = 'petugas';
+
     public function submittedDisasterReports(): HasMany
     {
         return $this->hasMany(DisasterReport::class, 'submitted_by');

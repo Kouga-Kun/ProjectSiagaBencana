@@ -26,6 +26,7 @@
     .na-btn.warning { background: #d97706; color: #fff; }
     .na-btn.success { background: #059669; color: #fff; }
     .na-btn.danger { background: #dc2626; color: #fff; }
+    .na-btn.headline { background: #7c3aed; color: #fff; }
     .na-alert { padding: 12px 15px; border-radius: 10px; margin-bottom: 16px; background: #ecfdf5; color: #065f46; }
     .na-error { padding: 12px 15px; border-radius: 10px; margin-bottom: 16px; background: #fef2f2; color: #991b1b; }
     .na-badge { display: inline-flex; border-radius: 999px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
@@ -36,6 +37,7 @@
     .na-table { width: 100%; min-width: 780px; border-collapse: collapse; }
     .na-table th, .na-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
     .na-table th { background: #f4f7fb; color: #334155; font-size: 13px; }
+    .na-thumb { width: 64px; height: 48px; border-radius: 8px; object-fit: cover; background: #e2e8f0; display: block; margin-bottom: 6px; }
     @media (max-width: 980px) {
         .news-admin-grid { grid-template-columns: 1fr; }
     }
@@ -45,7 +47,7 @@
     <header class="news-admin-header">
         <div>
             <h1 class="news-admin-title">📰 Dashboard Pengelolaan Berita</h1>
-            <p class="news-admin-desc">Tambah, perbarui, publikasikan, atau hapus artikel berita kebencanaan, peringatan dini, dan edukasi kesiapsiagaan.</p>
+            <p class="news-admin-desc">Tambah, perbarui, publikasikan, tentukan Headline News, atau hapus artikel berita kebencanaan, peringatan dini, dan edukasi kesiapsiagaan.</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <a class="na-btn secondary" href="{{ route('berita') }}">Lihat Halaman Berita Publik →</a>
@@ -85,9 +87,9 @@
             <small>Belum dipublikasikan</small>
         </article>
         <article class="news-admin-stat">
-            <p>Berita Utama</p>
+            <p>Headline News</p>
             <div class="news-admin-stat-value" style="color: #1e40af;">{{ number_format($featuredNews, 0, ',', '.') }}</div>
-            <small>Ditandai sebagai headline</small>
+            <small>Berita utama aktif saat ini</small>
         </article>
     </section>
 
@@ -164,7 +166,7 @@
                         name="summary"
                         class="na-textarea"
                         required
-                        placeholder="Ringkasan singkat yang ditampilkan pada kartu berita..."
+                        placeholder="Ringkasan singkat yang ditampilkan pada kartu berita dan Headline News..."
                     >{{ old('summary', $editingArticle?->summary) }}</textarea>
                 </div>
 
@@ -183,6 +185,17 @@
                 <div class="na-form-group">
                     <label for="image">Unggah Gambar Berita (JPG/PNG/WEBP, maks. 4MB)</label>
                     <input id="image" name="image" type="file" class="na-input" accept="image/jpeg,image/png,image/webp">
+                    @if ($editingArticle && $editingArticle->image_path)
+                        @php
+                            $editingImageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($editingArticle);
+                        @endphp
+                        @if ($editingImageUrl)
+                            <div style="margin-top: 8px;">
+                                <small style="color: #64748b; display: block; margin-bottom: 4px;">Gambar saat ini:</small>
+                                <img src="{{ $editingImageUrl }}" alt="Gambar berita" class="na-thumb" style="width: 120px; height: 76px;">
+                            </div>
+                        @endif
+                    @endif
                 </div>
 
                 <div class="na-form-group">
@@ -220,17 +233,23 @@
                     </select>
                 </div>
 
-                <div class="na-form-group" style="display: flex; align-items: center; gap: 8px;">
+                <div class="na-form-group" style="display: flex; align-items: flex-start; gap: 8px;">
                     <input
                         id="is_featured"
                         name="is_featured"
                         type="checkbox"
                         value="1"
+                        style="margin-top: 3px;"
                         @checked(old('is_featured', $editingArticle?->is_featured))
                     >
-                    <label for="is_featured" style="margin: 0; cursor: pointer;">
-                        Tampilkan sebagai Berita Utama (Featured News)
-                    </label>
+                    <div>
+                        <label for="is_featured" style="margin: 0; cursor: pointer;">
+                            Jadikan sebagai Headline News (Berita Utama)
+                        </label>
+                        <small style="color: #64748b; display: block; margin-top: 2px;">
+                            Hanya satu berita yang menjadi Headline News utama pada satu waktu.
+                        </small>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px;">
@@ -283,8 +302,14 @@
                     </thead>
                     <tbody>
                         @forelse ($articles as $item)
+                            @php
+                                $itemImageUrl = \App\Http\Controllers\NewsArticleController::resolveImageUrl($item);
+                            @endphp
                             <tr>
                                 <td>
+                                    @if ($itemImageUrl)
+                                        <img src="{{ $itemImageUrl }}" alt="{{ $item->title }}" class="na-thumb">
+                                    @endif
                                     <strong style="display: block; color: #0f172a; margin-bottom: 4px;">{{ $item->title }}</strong>
                                     <small style="color: #64748b; display: block; margin-bottom: 4px;">Slug: {{ $item->slug }}</small>
                                     <span style="font-size: 13px; color: #475569;">{{ \Illuminate\Support\Str::limit($item->summary, 110) }}</span>
@@ -300,7 +325,7 @@
                                             {{ $item->statusLabel() }}
                                         </span>
                                         @if ($item->is_featured)
-                                            <span class="na-badge na-badge-featured">Berita Utama</span>
+                                            <span class="na-badge na-badge-featured">⭐ Headline News</span>
                                         @endif
                                         <small style="color: #64748b;">
                                             {{ \App\Http\Controllers\NewsArticleController::formatPublishedDate($item->published_at ?? $item->created_at) }}
@@ -312,6 +337,15 @@
                                         <a href="{{ route('petugas.berita.index', array_merge($filters, ['edit' => $item->id])) }}" class="na-btn secondary">
                                             Edit
                                         </a>
+                                        @if (!$item->is_featured)
+                                            <form method="POST" action="{{ route('petugas.berita.headline', $item) }}" style="margin: 0;">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="na-btn headline">
+                                                    Jadikan Headline
+                                                </button>
+                                            </form>
+                                        @endif
                                         <form method="POST" action="{{ route('petugas.berita.publish', $item) }}" style="margin: 0;">
                                             @csrf
                                             @method('PATCH')
@@ -352,4 +386,3 @@
     </div>
 </div>
 @endsection
-

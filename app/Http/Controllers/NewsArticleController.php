@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\NewsArticle;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,23 +20,14 @@ class NewsArticleController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:200'],
-            'category' => ['nullable', Rule::in(NewsArticle::CATEGORIES)],
+            'category' => ['nullable', Rule::in(NewsArticle::ACCEPTED_CATEGORIES)],
         ]);
 
         $query = NewsArticle::query()
             ->with('author:id,name')
             ->where('status', NewsArticle::STATUS_PUBLISHED);
 
-        if (! empty($filters['search'])) {
-            $keyword = trim((string) $filters['search']);
-            if ($keyword !== '') {
-                $query->where('title', 'like', '%'.$keyword.'%');
-            }
-        }
-
-        if (! empty($filters['category'])) {
-            $query->where('category', $filters['category']);
-        }
+        $this->applySearchAndCategoryFilter($query, $filters);
 
         $articles = $query
             ->orderByDesc('published_at')
@@ -43,10 +35,12 @@ class NewsArticleController extends Controller
             ->get();
 
         $featuredArticle = $articles->firstWhere('is_featured', true) ?? $articles->first();
+        $serializedFeatured = $featuredArticle ? $this->serializeArticle($featuredArticle) : null;
 
         return response()->json([
             'data' => $articles->map(fn (NewsArticle $item) => $this->serializeArticle($item))->values(),
-            'featured' => $featuredArticle ? $this->serializeArticle($featuredArticle) : null,
+            'featured' => $serializedFeatured,
+            'headline' => $serializedFeatured,
             'categories' => NewsArticle::CATEGORIES,
         ]);
     }
@@ -106,22 +100,13 @@ class NewsArticleController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:200'],
-            'category' => ['nullable', Rule::in(NewsArticle::CATEGORIES)],
+            'category' => ['nullable', Rule::in(NewsArticle::ACCEPTED_CATEGORIES)],
             'status' => ['nullable', Rule::in([NewsArticle::STATUS_DRAFT, NewsArticle::STATUS_PUBLISHED])],
         ]);
 
         $query = NewsArticle::query()->with('author:id,name');
 
-        if (! empty($filters['search'])) {
-            $keyword = trim((string) $filters['search']);
-            if ($keyword !== '') {
-                $query->where('title', 'like', '%'.$keyword.'%');
-            }
-        }
-
-        if (! empty($filters['category'])) {
-            $query->where('category', $filters['category']);
-        }
+        $this->applySearchAndCategoryFilter($query, $filters);
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -143,6 +128,7 @@ class NewsArticleController extends Controller
                 'published' => NewsArticle::where('status', NewsArticle::STATUS_PUBLISHED)->count(),
                 'draft' => NewsArticle::where('status', NewsArticle::STATUS_DRAFT)->count(),
                 'featured' => NewsArticle::where('is_featured', true)->count(),
+                'headline' => NewsArticle::where('is_featured', true)->count(),
             ],
         ]);
     }
@@ -159,7 +145,7 @@ class NewsArticleController extends Controller
     public function storeJson(Request $request): JsonResponse
     {
         $validated = $this->validateArticlePayload($request);
-        $article = $this->persistArticle($request, new NewsArticle(), $validated);
+        $article = $this->persistArticle($request, new NewsArticle, $validated);
 
         return response()->json([
             'message' => 'Berita berhasil ditambahkan.',
@@ -175,6 +161,39 @@ class NewsArticleController extends Controller
         return response()->json([
             'message' => 'Berita berhasil diperbarui.',
             'data' => $this->serializeArticle($article),
+        ]);
+    }
+
+    public function setHeadlineJson(Request $request, NewsArticle $newsArticle): JsonResponse
+    {
+        $request->validate([
+            'is_headline' => ['nullable', 'boolean'],
+            'is_featured' => ['nullable', 'boolean'],
+        ]);
+
+        $targetFeatured = true;
+        if ($request->has('is_headline')) {
+            $targetFeatured = $request->boolean('is_headline');
+        } elseif ($request->has('is_featured')) {
+            $targetFeatured = $request->boolean('is_featured');
+        }
+
+        if ($targetFeatured) {
+            NewsArticle::query()
+                ->where('id', '!=', $newsArticle->id)
+                ->where('is_featured', true)
+                ->update(['is_featured' => false]);
+        }
+
+        $newsArticle->is_featured = $targetFeatured;
+        $newsArticle->save();
+        $newsArticle->load('author:id,name');
+
+        return response()->json([
+            'message' => $newsArticle->is_featured
+                ? 'Berita berhasil ditetapkan sebagai Headline News.'
+                : 'Status Headline News pada berita ini telah dinonaktifkan.',
+            'data' => $this->serializeArticle($newsArticle),
         ]);
     }
 
@@ -219,23 +238,14 @@ class NewsArticleController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:200'],
-            'category' => ['nullable', Rule::in(NewsArticle::CATEGORIES)],
+            'category' => ['nullable', Rule::in(NewsArticle::ACCEPTED_CATEGORIES)],
         ]);
 
         $query = NewsArticle::query()
             ->with('author:id,name')
             ->where('status', NewsArticle::STATUS_PUBLISHED);
 
-        if (! empty($filters['search'])) {
-            $keyword = trim((string) $filters['search']);
-            if ($keyword !== '') {
-                $query->where('title', 'like', '%'.$keyword.'%');
-            }
-        }
-
-        if (! empty($filters['category'])) {
-            $query->where('category', $filters['category']);
-        }
+        $this->applySearchAndCategoryFilter($query, $filters);
 
         $articles = $query
             ->orderByDesc('published_at')
@@ -287,23 +297,14 @@ class NewsArticleController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:200'],
-            'category' => ['nullable', Rule::in(NewsArticle::CATEGORIES)],
+            'category' => ['nullable', Rule::in(NewsArticle::ACCEPTED_CATEGORIES)],
             'status' => ['nullable', Rule::in([NewsArticle::STATUS_DRAFT, NewsArticle::STATUS_PUBLISHED])],
             'edit' => ['nullable', 'integer'],
         ]);
 
         $query = NewsArticle::query()->with('author:id,name');
 
-        if (! empty($filters['search'])) {
-            $keyword = trim((string) $filters['search']);
-            if ($keyword !== '') {
-                $query->where('title', 'like', '%'.$keyword.'%');
-            }
-        }
-
-        if (! empty($filters['category'])) {
-            $query->where('category', $filters['category']);
-        }
+        $this->applySearchAndCategoryFilter($query, $filters);
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -340,7 +341,7 @@ class NewsArticleController extends Controller
     public function storeWeb(Request $request): RedirectResponse
     {
         $validated = $this->validateArticlePayload($request);
-        $article = $this->persistArticle($request, new NewsArticle(), $validated);
+        $article = $this->persistArticle($request, new NewsArticle, $validated);
 
         return redirect()
             ->route('petugas.berita.index')
@@ -355,6 +356,22 @@ class NewsArticleController extends Controller
         return redirect()
             ->route('petugas.berita.index')
             ->with('status', 'Berita "'.$article->title.'" berhasil diperbarui.');
+    }
+
+    public function setHeadlineWeb(Request $request, NewsArticle $newsArticle): RedirectResponse
+    {
+        NewsArticle::query()
+            ->where('id', '!=', $newsArticle->id)
+            ->where('is_featured', true)
+            ->update(['is_featured' => false]);
+
+        $newsArticle->is_featured = true;
+        $newsArticle->save();
+
+        return back()->with(
+            'status',
+            'Berita "'.$newsArticle->title.'" telah ditetapkan sebagai Headline News utama.'
+        );
     }
 
     public function togglePublishWeb(Request $request, NewsArticle $newsArticle): RedirectResponse
@@ -389,6 +406,32 @@ class NewsArticleController extends Controller
     }
 
     /**
+     * @param  Builder<NewsArticle>  $query
+     * @param  array<string, mixed>  $filters
+     */
+    private function applySearchAndCategoryFilter(Builder $query, array $filters): void
+    {
+        if (! empty($filters['search'])) {
+            $keyword = trim((string) $filters['search']);
+            if ($keyword !== '') {
+                $query->where('title', 'like', '%'.$keyword.'%');
+            }
+        }
+
+        if (! empty($filters['category'])) {
+            $category = (string) $filters['category'];
+            if (in_array($category, [NewsArticle::CATEGORY_DISASTER, NewsArticle::CATEGORY_DISASTER_LEGACY], true)) {
+                $query->whereIn('category', [
+                    NewsArticle::CATEGORY_DISASTER,
+                    NewsArticle::CATEGORY_DISASTER_LEGACY,
+                ]);
+            } else {
+                $query->where('category', $category);
+            }
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validateArticlePayload(Request $request, ?NewsArticle $existing = null): array
@@ -401,12 +444,13 @@ class NewsArticleController extends Controller
                 'max:255',
                 Rule::unique('news_articles', 'slug')->ignore($existing?->id),
             ],
-            'category' => ['required', Rule::in(NewsArticle::CATEGORIES)],
+            'category' => ['required', Rule::in(NewsArticle::ACCEPTED_CATEGORIES)],
             'summary' => ['required', 'string', 'max:1000'],
             'content' => ['required', 'string', 'max:50000'],
             'source' => ['required', 'string', 'max:255'],
             'status' => ['required', Rule::in([NewsArticle::STATUS_DRAFT, NewsArticle::STATUS_PUBLISHED])],
             'is_featured' => ['nullable', 'boolean'],
+            'is_headline' => ['nullable', 'boolean'],
             'published_at' => ['nullable', 'date'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'image_url' => ['nullable', 'url', 'max:500'],
@@ -459,7 +503,7 @@ class NewsArticleController extends Controller
             $publishedAt = now();
         }
 
-        $isFeatured = $request->boolean('is_featured');
+        $isFeatured = $request->boolean('is_featured') || $request->boolean('is_headline');
         if ($isFeatured) {
             NewsArticle::query()
                 ->when($article->exists, fn ($query) => $query->where('id', '!=', $article->id))
@@ -570,6 +614,7 @@ class NewsArticleController extends Controller
             'title' => $article->title,
             'slug' => $article->slug,
             'category' => $article->category,
+            'image_path' => $article->image_path,
             'image_url' => self::resolveImageUrl($article),
             'summary' => $article->summary,
             'content' => $article->content,
@@ -579,6 +624,7 @@ class NewsArticleController extends Controller
             'status' => $article->status,
             'status_label' => $article->statusLabel(),
             'is_featured' => (bool) $article->is_featured,
+            'is_headline' => (bool) $article->is_featured,
             'author_id' => $article->author_id,
             'author_name' => $article->relationLoaded('author') ? $article->author?->name : null,
             'created_at' => $article->created_at?->toIso8601String(),
@@ -586,4 +632,3 @@ class NewsArticleController extends Controller
         ];
     }
 }
-

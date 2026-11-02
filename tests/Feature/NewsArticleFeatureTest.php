@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\NewsArticle;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class NewsArticleFeatureTest extends TestCase
@@ -40,7 +41,7 @@ class NewsArticleFeatureTest extends TestCase
         $draftArticle = NewsArticle::create([
             'title' => 'Draf Internal Evaluasi Jalur Evakuasi',
             'slug' => 'draf-internal-evaluasi-jalur-evakuasi',
-            'category' => NewsArticle::CATEGORY_REGIONAL_INFO,
+            'category' => NewsArticle::CATEGORY_DISASTER,
             'summary' => 'Artikel ini masih berstatus draf dan belum boleh tampil ke publik.',
             'content' => 'Isi draf internal.',
             'source' => 'Internal Petugas',
@@ -54,7 +55,8 @@ class NewsArticleFeatureTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.id', $newerPublished->id)
             ->assertJsonPath('data.1.id', $olderPublished->id)
-            ->assertJsonPath('featured.id', $newerPublished->id);
+            ->assertJsonPath('featured.id', $newerPublished->id)
+            ->assertJsonPath('headline.id', $newerPublished->id);
 
         // Pencarian berdasarkan judul
         $searchResponse = $this->getJson('/api/berita?search=Gempa');
@@ -72,22 +74,20 @@ class NewsArticleFeatureTest extends TestCase
         $detailResponse = $this->getJson('/api/berita/'.$newerPublished->slug);
         $detailResponse->assertOk()
             ->assertJsonPath('data.title', $newerPublished->title)
-            ->assertJsonPath('data.source', 'BMKG Sumatera Barat');
+            ->assertJsonPath('data.source', 'BMKG Sumatera Barat')
+            ->assertJsonPath('data.is_headline', true);
 
         // Berita draf tidak boleh ditampilkan kepada pengguna umum
         $draftResponse = $this->getJson('/api/berita/'.$draftArticle->slug);
         $draftResponse->assertNotFound();
     }
 
-    public function test_only_staff_can_manage_and_publish_news_articles(): void
+    public function test_only_staff_can_manage_publish_and_set_single_headline_news(): void
     {
-        $regularUser = User::factory()->create([
-            'role' => User::ROLE_PUBLIC,
-        ]);
-
-        $staffUser = User::factory()->create([
-            'role' => User::ROLE_REPORT_STAFF,
-        ]);
+        $regularUser = User::factory()->create();
+        $staffUser = User::factory()->create();
+        DB::table('users')->where('id', $staffUser->id)->update(['role' => User::ROLE_REPORT_STAFF]);
+        $staffUser->refresh();
 
         // Pengguna biasa ditolak mengakses endpoint admin berita
         $this->actingAs($regularUser)
@@ -101,7 +101,7 @@ class NewsArticleFeatureTest extends TestCase
             ])
             ->assertForbidden();
 
-        // Petugas/Admin dapat membuat berita sebagai draf
+        // Petugas/Admin dapat membuat berita pertama sebagai draf dan headline
         $createResponse = $this->actingAs($staffUser)
             ->postJson('/api/admin/berita', [
                 'title' => 'Edukasi Tas Siaga Bencana untuk Keluarga',
@@ -115,16 +115,17 @@ class NewsArticleFeatureTest extends TestCase
 
         $createResponse->assertCreated()
             ->assertJsonPath('data.status', NewsArticle::STATUS_DRAFT)
-            ->assertJsonPath('data.slug', 'edukasi-tas-siaga-bencana-untuk-keluarga');
+            ->assertJsonPath('data.slug', 'edukasi-tas-siaga-bencana-untuk-keluarga')
+            ->assertJsonPath('data.is_headline', true);
 
-        $articleId = $createResponse->json('data.id');
+        $firstArticleId = $createResponse->json('data.id');
 
         // Saat masih draf, tidak muncul di API publik
         $this->getJson('/api/berita')->assertOk()->assertJsonCount(0, 'data');
 
-        // Petugas mempublikasikan berita
+        // Petugas mempublikasikan berita pertama
         $publishResponse = $this->actingAs($staffUser)
-            ->patchJson('/api/admin/berita/'.$articleId.'/publikasi', [
+            ->patchJson('/api/admin/berita/'.$firstArticleId.'/publikasi', [
                 'status' => NewsArticle::STATUS_PUBLISHED,
             ]);
 
@@ -135,29 +136,59 @@ class NewsArticleFeatureTest extends TestCase
         $this->getJson('/api/berita')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $articleId);
+            ->assertJsonPath('data.0.id', $firstArticleId);
 
-        // Petugas mengedit berita
+        // Petugas membuat berita kedua
+        $secondResponse = $this->actingAs($staffUser)
+            ->postJson('/api/admin/berita', [
+                'title' => 'Penanganan Banjir di Kecamatan Koto Tangah',
+                'category' => NewsArticle::CATEGORY_DISASTER,
+                'summary' => 'Tim gabungan BPBD melakukan evakuasi warga terdampak genangan banjir.',
+                'content' => 'Isi lengkap penanganan banjir di wilayah Koto Tangah.',
+                'source' => 'BPBD Kota Padang',
+                'status' => NewsArticle::STATUS_PUBLISHED,
+                'is_featured' => false,
+            ]);
+
+        $secondResponse->assertCreated();
+        $secondArticleId = $secondResponse->json('data.id');
+
+        // Petugas menentukan berita kedua sebagai Headline News melalui endpoint khusus
+        $headlineResponse = $this->actingAs($staffUser)
+            ->patchJson('/api/admin/berita/'.$secondArticleId.'/headline', [
+                'is_headline' => true,
+            ]);
+
+        $headlineResponse->assertOk()
+            ->assertJsonPath('data.id', $secondArticleId)
+            ->assertJsonPath('data.is_featured', true)
+            ->assertJsonPath('data.is_headline', true);
+
+        // Hanya satu berita yang menjadi headline utama pada satu waktu
+        $this->assertSame(1, NewsArticle::where('is_featured', true)->count());
+        $this->assertFalse((bool) NewsArticle::findOrFail($firstArticleId)->is_featured);
+        $this->assertTrue((bool) NewsArticle::findOrFail($secondArticleId)->is_featured);
+
+        // Petugas mengedit berita pertama
         $updateResponse = $this->actingAs($staffUser)
-            ->patchJson('/api/admin/berita/'.$articleId, [
+            ->patchJson('/api/admin/berita/'.$firstArticleId, [
                 'title' => 'Edukasi Tas Siaga Bencana untuk Keluarga di Kota Padang',
                 'category' => NewsArticle::CATEGORY_EDUCATION,
                 'summary' => 'Ringkasan yang telah diperbarui.',
                 'content' => 'Isi berita lengkap yang telah diperbarui.',
                 'source' => 'BPBD Kota Padang',
                 'status' => NewsArticle::STATUS_PUBLISHED,
-                'is_featured' => true,
+                'is_featured' => false,
             ]);
 
         $updateResponse->assertOk()
             ->assertJsonPath('data.title', 'Edukasi Tas Siaga Bencana untuk Keluarga di Kota Padang');
 
-        // Petugas menghapus berita
+        // Petugas menghapus berita pertama
         $this->actingAs($staffUser)
-            ->deleteJson('/api/admin/berita/'.$articleId)
+            ->deleteJson('/api/admin/berita/'.$firstArticleId)
             ->assertOk();
 
-        $this->assertDatabaseMissing('news_articles', ['id' => $articleId]);
+        $this->assertDatabaseMissing('news_articles', ['id' => $firstArticleId]);
     }
 }
-

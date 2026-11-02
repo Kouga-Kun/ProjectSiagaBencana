@@ -99,6 +99,9 @@ Route::middleware(['auth', 'report.staff'])->group(function () {
     Route::match(['put', 'patch', 'post'], '/api/admin/berita/{newsArticle}', [NewsArticleController::class, 'updateJson'])
         ->name('api.admin.berita.update');
 
+    Route::match(['patch', 'post'], '/api/admin/berita/{newsArticle}/headline', [NewsArticleController::class, 'setHeadlineJson'])
+        ->name('api.admin.berita.headline');
+
     Route::match(['patch', 'post'], '/api/admin/berita/{newsArticle}/publikasi', [NewsArticleController::class, 'togglePublishJson'])
         ->name('api.admin.berita.publish');
 
@@ -172,6 +175,9 @@ Route::middleware(['auth', 'report.staff'])->group(function () {
 
     Route::match(['put', 'patch'], '/petugas/berita/{newsArticle}', [NewsArticleController::class, 'updateWeb'])
         ->name('petugas.berita.update');
+
+    Route::patch('/petugas/berita/{newsArticle}/headline', [NewsArticleController::class, 'setHeadlineWeb'])
+        ->name('petugas.berita.headline');
 
     Route::patch('/petugas/berita/{newsArticle}/publikasi', [NewsArticleController::class, 'togglePublishWeb'])
         ->name('petugas.berita.publish');

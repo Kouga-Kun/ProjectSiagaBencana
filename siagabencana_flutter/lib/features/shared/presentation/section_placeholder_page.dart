@@ -16,6 +16,7 @@ class SectionPlaceholderPage extends StatelessWidget {
   String get _note => switch (section) {
     AppSection.evacuation => 'Peta di halaman lama memakai zona, rute, dan koordinat statis. Belum ada peta yang ditampilkan di sini sampai sumber lokasi resmi dikonfirmasi.',
     AppSection.news => 'Daftar berita di Blade masih berupa konten statis. Belum ada feed berita atau API berita yang terhubung.',
+    AppSection.education => 'Halaman Edukasi Gempa Bumi dan Tsunami.',
     AppSection.mitigation => 'Blade memuat panduan gempa, tsunami, dan checklist Tas Siaga. Pemindahan konten dan interaksinya akan dilanjutkan pada tahap halaman berikutnya.',
     AppSection.reports => 'Riwayat, formulir laporan warga, dan tindakan verifikasi petugas memerlukan API Laravel yang belum dibuat.',
     AppSection.profile => 'Profil, kontak darurat, dan alur akun akan dihubungkan setelah fondasi frontend selesai.',

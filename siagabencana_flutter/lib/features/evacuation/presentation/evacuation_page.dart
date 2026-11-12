@@ -5,9 +5,14 @@ import '../../../app/widgets/siaga_components.dart';
 import 'evacuation_map.dart';
 
 class EvacuationPage extends StatelessWidget {
-  const EvacuationPage({required this.onOpenMitigation, super.key});
+  const EvacuationPage({
+    required this.onOpenMitigation,
+    this.onOpenEducation,
+    super.key,
+  });
 
   final VoidCallback onOpenMitigation;
+  final VoidCallback? onOpenEducation;
 
   @override
   Widget build(BuildContext context) {
@@ -101,13 +106,22 @@ class EvacuationPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
-            onPressed: onOpenMitigation,
-            icon: const Icon(Icons.health_and_safety_outlined),
-            label: const Text('Buka panduan mitigasi'),
-          ),
+        Wrap(
+          spacing: 12,
+          runSpacing: 10,
+          children: [
+            FilledButton.icon(
+              onPressed: onOpenMitigation,
+              icon: const Icon(Icons.health_and_safety_outlined),
+              label: const Text('Buka panduan mitigasi'),
+            ),
+            if (onOpenEducation != null)
+              OutlinedButton.icon(
+                onPressed: onOpenEducation,
+                icon: const Icon(Icons.school_rounded),
+                label: const Text('Pelajari Cara Evakuasi Tsunami'),
+              ),
+          ],
         ),
       ],
     );

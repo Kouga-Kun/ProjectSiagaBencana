@@ -190,14 +190,15 @@
         <div class="brand">🛡️ SiagaBencana</div>
         <nav class="nav">
             <a href="{{ route('home') }}">Beranda</a>
-            <a href="{{ route('evakuasi') }}">Evakuasi</a>
             <a href="{{ route('berita') }}">Berita</a>
-            <a href="{{ route('mitigasi') }}">Mitigasi</a>
-            <a href="{{ route('laporan') }}">Laporan</a>
+            <a href="{{ route('evakuasi') }}">Peta Evakuasi</a>
+            <a href="{{ route('edukasi.index') }}">Edukasi Bencana</a>
+            <a href="{{ route('laporan') }}">Laporan Bencana</a>
             @auth
                 @if (auth()->user()->isReportStaff())
                     <a href="{{ route('petugas.sos.index') }}">Dashboard SOS</a>
                     <a href="{{ route('petugas.berita.index') }}">Kelola Berita</a>
+                    <a href="{{ route('petugas.edukasi.index') }}">Kelola Edukasi</a>
                 @endif
                 <a href="{{ route('profil') }}">Profil</a>
             @else
@@ -222,17 +223,21 @@
             <span class="icon">🏠</span>
             <span>Beranda</span>
         </a>
-        <a href="{{ route('evakuasi') }}" class="bottom-nav-item {{ request()->routeIs('evakuasi') ? 'active' : '' }}">
-            <span class="icon">🏃</span>
-            <span>Evakuasi</span>
-        </a>
         <a href="{{ route('berita') }}" class="bottom-nav-item {{ request()->routeIs('berita*') ? 'active' : '' }}">
             <span class="icon">📰</span>
             <span>Berita</span>
         </a>
-        <a href="{{ route('mitigasi') }}" class="bottom-nav-item {{ request()->routeIs('mitigasi') ? 'active' : '' }}">
-            <span class="icon">🛡️</span>
-            <span>Mitigasi</span>
+        <a href="{{ route('evakuasi') }}" class="bottom-nav-item {{ request()->routeIs('evakuasi') ? 'active' : '' }}">
+            <span class="icon">🗺️</span>
+            <span>Peta Evakuasi</span>
+        </a>
+        <a href="{{ route('edukasi.index') }}" class="bottom-nav-item {{ request()->routeIs('edukasi*') ? 'active' : '' }}">
+            <span class="icon">🎓</span>
+            <span>Edukasi Bencana</span>
+        </a>
+        <a href="{{ route('laporan') }}" class="bottom-nav-item {{ request()->routeIs('laporan*') ? 'active' : '' }}">
+            <span class="icon">📋</span>
+            <span>Laporan</span>
         </a>
         <a href="{{ route('profil') }}" class="bottom-nav-item {{ request()->routeIs('profil') ? 'active' : '' }}">
             <span class="icon">👤</span>

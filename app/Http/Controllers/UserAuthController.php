@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\EducationProgressService;
+use Database\Seeders\DisasterEducationSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -270,9 +272,19 @@ class UserAuthController extends Controller
         return redirect()->route('profil')->with('status', 'Pendaftaran berhasil. Selamat datang di SiagaBencana.');
     }
 
-    public function showProfile(): View
+    public function showProfile(EducationProgressService $progressService): View
     {
-        return view('profil', ['user' => Auth::user()]);
+        $user = Auth::user();
+        $educationProgress = null;
+        if ($user !== null) {
+            DisasterEducationSeeder::ensureSeeded();
+            $educationProgress = $progressService->buildUserProgress($user);
+        }
+
+        return view('profil', [
+            'user' => $user,
+            'educationProgress' => $educationProgress,
+        ]);
     }
 
     public function logout(Request $request): RedirectResponse

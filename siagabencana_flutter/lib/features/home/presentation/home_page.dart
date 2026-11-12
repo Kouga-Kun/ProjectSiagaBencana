@@ -66,6 +66,42 @@ class _HomePageState extends State<HomePage> {
         _HomeHero(
           onOpenEvacuation: () => widget.onOpenSection(AppSection.evacuation),
           onOpenReport: () => widget.onOpenSection(AppSection.reports),
+          onOpenEducation: () => widget.onOpenSection(AppSection.education),
+        ),
+        const SizedBox(height: 34),
+        SiagaSectionHeader(
+          title: 'Edukasi Gempa Bumi & Tsunami',
+          subtitle:
+              'Pelajari langkah keselamatan sebelum, saat, dan setelah gempa bumi maupun tsunami.',
+          action: TextButton.icon(
+            onPressed: () => widget.onOpenSection(AppSection.education),
+            icon: const Icon(Icons.school_rounded),
+            label: const Text('Buka Edukasi Bencana'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SiagaResponsiveGrid(
+          minimumItemWidth: 280,
+          children: [
+            _EducationRecommendCard(
+              badge: 'GEMPA BUMI',
+              tone: SiagaTone.danger,
+              title: 'Tindakan Saat Gempa (Drop, Cover, Hold On)',
+              description:
+                  'Pelajari langkah Merunduk, Lindungi Kepala, dan Bertahan di dalam ruangan, sekolah, atau gedung bertingkat.',
+              icon: Icons.public_rounded,
+              onTap: () => widget.onOpenSection(AppSection.education),
+            ),
+            _EducationRecommendCard(
+              badge: 'TSUNAMI',
+              tone: SiagaTone.info,
+              title: 'Peringatan Dini & Evakuasi Tsunami Mandiri',
+              description:
+                  'Jika merasakan gempa kuat atau lama di pesisir, segera menjauh dari pantai menuju tempat tinggi tanpa menunggu sirine.',
+              icon: Icons.tsunami_rounded,
+              onTap: () => widget.onOpenSection(AppSection.education),
+            ),
+          ],
         ),
         const SizedBox(height: 34),
         const SiagaSectionHeader(
@@ -123,6 +159,12 @@ class _HomePageState extends State<HomePage> {
           minimumItemWidth: 280,
           children: [
             _QuickActionCard(
+              section: AppSection.education,
+              accent: SiagaColors.navy,
+              background: const Color(0xFFE0E7FF),
+              onPressed: () => widget.onOpenSection(AppSection.education),
+            ),
+            _QuickActionCard(
               section: AppSection.reports,
               accent: SiagaColors.navyHover,
               background: const Color(0xFFEFF6FF),
@@ -148,10 +190,15 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _HomeHero extends StatelessWidget {
-  const _HomeHero({required this.onOpenEvacuation, required this.onOpenReport});
+  const _HomeHero({
+    required this.onOpenEvacuation,
+    required this.onOpenReport,
+    required this.onOpenEducation,
+  });
 
   final VoidCallback onOpenEvacuation;
   final VoidCallback onOpenReport;
+  final VoidCallback onOpenEducation;
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +300,19 @@ class _HomeHero extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.assignment_outlined),
                     label: const Text('Lihat laporan'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: onOpenEducation,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0x88FFFFFF)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
+                    ),
+                    icon: const Icon(Icons.school_outlined),
+                    label: const Text('Edukasi Bencana'),
                   ),
                 ],
               ),
@@ -485,6 +545,47 @@ class _QuickActionCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EducationRecommendCard extends StatelessWidget {
+  const _EducationRecommendCard({
+    required this.badge,
+    required this.tone,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String badge;
+  final SiagaTone tone;
+  final String title;
+  final String description;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SiagaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SiagaBadge(label: badge, tone: tone, icon: icon),
+          const SizedBox(height: 12),
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(description, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: onTap,
+            icon: const Icon(Icons.menu_book_rounded, size: 18),
+            label: const Text('Pelajari Materi & Simulasi'),
+          ),
+        ],
       ),
     );
   }

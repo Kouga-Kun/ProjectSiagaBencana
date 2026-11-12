@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
+import '../../education/data/education_data_service.dart';
+import '../../education/presentation/education_material_detail_page.dart';
 import '../data/news_data_service.dart';
 
 class NewsDetailPage extends StatefulWidget {
@@ -281,6 +283,86 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                                     fontSize: 15.5,
                                     height: 1.8,
                                   ),
+                            ),
+                            const SizedBox(height: 28),
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: SiagaColors.navy.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.school_rounded,
+                                        color: SiagaColors.navy,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Edukasi Terkait: Gempa Bumi & Tsunami',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15,
+                                            color: SiagaColors.navy,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Pelajari langkah keselamatan sebelum, saat, dan setelah gempa bumi maupun tsunami agar siap bertindak tepat.',
+                                    style: TextStyle(
+                                      color: SiagaColors.ink,
+                                      fontSize: 13.5,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 8,
+                                    children: [
+                                      FilledButton.icon(
+                                        onPressed: () {
+                                          final text =
+                                              '${_article.title} ${_article.summary} ${_article.content}'
+                                                  .toLowerCase();
+                                          final slug = text.contains('tsunami')
+                                              ? 'peringatan-dini-tsunami'
+                                              : 'tindakan-saat-gempa-dalam-ruangan';
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) =>
+                                                  EducationMaterialDetailPage(
+                                                    materialSlugOrId: slug,
+                                                    service:
+                                                        EducationDataService
+                                                            .instance,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.menu_book_rounded,
+                                          size: 18,
+                                        ),
+                                        label: const Text(
+                                          'Baca Panduan Keselamatan Terkait',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

@@ -245,10 +245,35 @@
         dan mempersiapkan diri menghadapi keadaan darurat.
     </p>
 
-    <a href="{{ route('evakuasi') }}" class="hero-button">
-        Lihat Informasi Evakuasi →
-    </a>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <a href="{{ route('evakuasi') }}" class="hero-button">
+            Lihat Informasi Evakuasi →
+        </a>
+        <a href="{{ route('edukasi.index') }}" class="hero-button" style="background:#dc2626;color:#ffffff;">
+            🎓 Mulai Edukasi Gempa Bumi &amp; Tsunami →
+        </a>
+    </div>
 </section>
+
+{{-- PINTASAN & REKOMENDASI MATERI EDUKASI GEMPA BUMI DAN TSUNAMI --}}
+<h2 class="section-title">🎓 Edukasi Kesiapsiagaan Gempa Bumi &amp; Tsunami</h2>
+<div class="cards" style="margin-bottom:24px;">
+    <div class="card" style="border-left:5px solid #d97706;">
+        <h3>🏚️ Mitigasi Gempa Bumi</h3>
+        <p>Pelajari langkah penyelamatan diri <strong>Drop, Cover, and Hold On</strong> di rumah, sekolah, gedung bertingkat, serta persiapan Tas Siaga Bencana.</p>
+        <a href="{{ route('edukasi.index', ['tab' => 'belajar', 'category' => 'Gempa Bumi']) }}">Pelajari Materi Gempa Bumi →</a>
+    </div>
+    <div class="card" style="border-left:5px solid #0284c7;">
+        <h3>🌊 Mitigasi &amp; Evakuasi Tsunami</h3>
+        <p>Kenali tanda alam surutnya air laut, level peringatan dini BMKG, dan cara evakuasi mandiri menuju tempat tinggi (&gt;20 mdpl).</p>
+        <a href="{{ route('edukasi.index', ['tab' => 'belajar', 'category' => 'Tsunami']) }}">Pelajari Materi Tsunami →</a>
+    </div>
+    <div class="card" style="border-left:5px solid #059669;">
+        <h3>🎮 Simulasi, Kuis &amp; Misi Siaga</h3>
+        <p>Uji ketepatan tindakan darurat melalui simulasi skenario interaktif, kuis evaluasi, dan misi kesiapsiagaan keluarga.</p>
+        <a href="{{ route('edukasi.index', ['tab' => 'simulasi']) }}">Coba Simulasi &amp; Kuis →</a>
+    </div>
+</div>
 
 {{-- CUACA, KUALITAS UDARA, PERINGATAN --}}
 <h2 class="section-title">Informasi Kebencanaan</h2>
@@ -656,6 +681,14 @@ document.addEventListener('DOMContentLoaded', function () {
             Baca informasi dan edukasi kesiapsiagaan bencana.
         </p>
         <a href="{{ route('berita') }}">Buka Berita →</a>
+    </div>
+
+    <div class="card">
+        <h3>🎓 Edukasi Bencana</h3>
+        <p>
+            Materi belajar, simulasi skenario, kuis, dan misi siaga khusus gempa bumi dan tsunami.
+        </p>
+        <a href="{{ route('edukasi.index') }}">Buka Edukasi Bencana →</a>
     </div>
 
     <div class="card">

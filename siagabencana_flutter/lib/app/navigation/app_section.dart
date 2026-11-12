@@ -4,6 +4,7 @@ enum AppSection {
   home,
   evacuation,
   news,
+  education,
   mitigation,
   reports,
   login,
@@ -16,6 +17,7 @@ extension AppSectionPresentation on AppSection {
     AppSection.home => 'Beranda',
     AppSection.evacuation => 'Evakuasi',
     AppSection.news => 'Berita',
+    AppSection.education => 'Edukasi Bencana',
     AppSection.mitigation => 'Mitigasi',
     AppSection.reports => 'Laporan',
     AppSection.login => 'Login',
@@ -27,6 +29,7 @@ extension AppSectionPresentation on AppSection {
     AppSection.home => Icons.home_rounded,
     AppSection.evacuation => Icons.directions_walk_rounded,
     AppSection.news => Icons.newspaper_rounded,
+    AppSection.education => Icons.school_rounded,
     AppSection.mitigation => Icons.health_and_safety_rounded,
     AppSection.reports => Icons.assignment_rounded,
     AppSection.login => Icons.login_rounded,
@@ -41,6 +44,8 @@ extension AppSectionPresentation on AppSection {
       'Informasi langkah evakuasi dan sumber lokasi yang terverifikasi.',
     AppSection.news =>
       'Pembaruan bencana dan kesiapsiagaan dari sumber yang dapat diperiksa.',
+    AppSection.education =>
+      'Edukasi mitigasi gempa bumi dan tsunami: belajar, simulasi, kuis, dan misi siaga.',
     AppSection.mitigation =>
       'Panduan keselamatan gempa, tsunami, dan persiapan Tas Siaga.',
     AppSection.reports =>
@@ -53,15 +58,15 @@ extension AppSectionPresentation on AppSection {
 
 const mobileNavigationSections = <AppSection>[
   AppSection.home,
-  AppSection.evacuation,
   AppSection.news,
-  AppSection.mitigation,
+  AppSection.evacuation,
+  AppSection.education,
 ];
 
 const desktopNavigationSections = <AppSection>[
   AppSection.home,
-  AppSection.evacuation,
   AppSection.news,
-  AppSection.mitigation,
+  AppSection.evacuation,
+  AppSection.education,
   AppSection.reports,
 ];

@@ -11,6 +11,9 @@ abstract final class SiagaColors {
   static const ink = Color(0xFF0F172A);
   static const muted = Color(0xFF64748B);
   static const border = Color(0xFFE2E8F0);
+  static const textDark = ink;
+  static const textMuted = muted;
+  static const info = Color(0xFF0284C7);
 }
 
 abstract final class SiagaTheme {

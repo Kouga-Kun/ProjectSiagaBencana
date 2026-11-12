@@ -42,4 +42,11 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function reportStaff(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => User::ROLE_REPORT_STAFF,
+        ]);
+    }
 }

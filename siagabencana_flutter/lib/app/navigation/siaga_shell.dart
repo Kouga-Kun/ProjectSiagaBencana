@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/auth/data/auth_session_service.dart';
 import '../../features/auth/presentation/auth_page.dart';
+import '../../features/education/presentation/education_page.dart';
 import '../../features/evacuation/presentation/evacuation_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/home/data/home_data_service.dart';
@@ -109,6 +110,8 @@ class _SiagaShellState extends State<SiagaShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (final section in const [
+                  AppSection.education,
+                  AppSection.mitigation,
                   AppSection.reports,
                   AppSection.profile,
                 ])
@@ -136,8 +139,10 @@ class _SiagaShellState extends State<SiagaShell> {
     ),
     AppSection.evacuation => EvacuationPage(
       onOpenMitigation: () => _openSection(AppSection.mitigation),
+      onOpenEducation: () => _openSection(AppSection.education),
     ),
     AppSection.news => NewsPage(onOpenSection: _openSection),
+    AppSection.education => EducationPage(onNavigate: _openSection),
     AppSection.mitigation => const MitigationPage(),
     AppSection.reports => ReportsPage(
       authService: _authService,

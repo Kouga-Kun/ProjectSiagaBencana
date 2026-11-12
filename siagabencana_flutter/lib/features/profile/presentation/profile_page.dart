@@ -4,6 +4,7 @@ import '../../../app/navigation/app_section.dart';
 import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
 import '../../auth/data/auth_session_service.dart';
+import '../../education/data/education_data_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({
@@ -189,6 +190,10 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 24),
+        _ProfileEducationProgressCard(
+          onOpenEducation: () => onOpenSection(AppSection.education),
+        ),
+        const SizedBox(height: 24),
         const SiagaSectionHeader(
           title: 'Pengaturan dan bantuan',
           subtitle: 'Fitur akan diaktifkan setelah tersedia di aplikasi.',
@@ -337,6 +342,164 @@ class _ProfileFeatureCard extends StatelessWidget {
           const SiagaBadge(label: 'Belum tersedia', tone: SiagaTone.neutral),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileEducationProgressCard extends StatelessWidget {
+  const _ProfileEducationProgressCard({required this.onOpenEducation});
+
+  final VoidCallback onOpenEducation;
+
+  @override
+  Widget build(BuildContext context) {
+    final service = EducationDataService.instance;
+    return ListenableBuilder(
+      listenable: service,
+      builder: (context, _) {
+        final EducationUserProgress progress = service.currentProgress;
+        return SiagaCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const SiagaIconTile(
+                    icon: Icons.school_rounded,
+                    color: SiagaColors.navy,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Progres & Pencapaian Edukasi Bencana',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Progres kesiapsiagaan Gempa Bumi & Tsunami (${progress.overallPercentage}% selesai · ${progress.totalPoints} poin)',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: (progress.overallPercentage / 100).clamp(
+                    0.0,
+                    1.0,
+                  ),
+                  minHeight: 8,
+                  backgroundColor: SiagaColors.border,
+                  color: SiagaColors.navy,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  SiagaBadge(
+                    label:
+                        'Materi Gempa: ${progress.earthquakeMaterialsCompleted}/${progress.earthquakeMaterialsTotal}',
+                    tone: SiagaTone.danger,
+                  ),
+                  SiagaBadge(
+                    label:
+                        'Materi Tsunami: ${progress.tsunamiMaterialsCompleted}/${progress.tsunamiMaterialsTotal}',
+                    tone: SiagaTone.info,
+                  ),
+                  SiagaBadge(
+                    label:
+                        'Simulasi: ${progress.simulationsCompleted}/${progress.simulationsTotal}',
+                    tone: SiagaTone.warning,
+                  ),
+                  SiagaBadge(
+                    label:
+                        'Misi Siaga: ${progress.missionsCompleted}/${progress.missionsTotal}',
+                    tone: SiagaTone.success,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Penghargaan Kesiapsiagaan:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: SiagaColors.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final badge in progress.badges)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badge.isEarned
+                            ? const Color(0xFFFEF3C7)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: badge.isEarned
+                              ? const Color(0xFFF59E0B)
+                              : SiagaColors.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            badge.isEarned
+                                ? Icons.workspace_premium_rounded
+                                : Icons.lock_outline_rounded,
+                            size: 15,
+                            color: badge.isEarned
+                                ? const Color(0xFFD97706)
+                                : SiagaColors.muted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            badge.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: badge.isEarned
+                                  ? const Color(0xFF92400E)
+                                  : SiagaColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: onOpenEducation,
+                  icon: const Icon(Icons.school_rounded, size: 18),
+                  label: const Text('Buka Edukasi Gempa Bumi & Tsunami'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

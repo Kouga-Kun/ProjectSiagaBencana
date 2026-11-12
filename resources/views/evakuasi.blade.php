@@ -122,4 +122,23 @@
 
 </div>
 
+<div style="background:linear-gradient(135deg,#1e3a8a,#0f172a);color:#ffffff;padding:24px 28px;border-radius:16px;margin-top:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;">
+    <div style="max-width:720px;">
+        <h3 style="margin:0 0 6px 0;font-size:1.25rem;">🎓 Pelajari Panduan Evakuasi Gempa Bumi &amp; Tsunami Secara Lengkap</h3>
+        <p style="margin:0;color:#cbd5e1;font-size:0.95rem;line-height:1.55;">
+            Pelajari cara memilih jalur evakuasi ke tempat tinggi, hal yang dilarang saat evakuasi tsunami, serta latih pengambilan keputusan melalui simulasi interaktif.
+        </p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        <a href="{{ route('edukasi.materi.show', 'cara-melakukan-evakuasi-ke-tempat-yang-lebih-tinggi-atau-lokasi-aman') }}"
+           style="background:#dc2626;color:#ffffff;padding:11px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+            Materi Evakuasi Tsunami →
+        </a>
+        <a href="{{ route('edukasi.index', ['tab' => 'simulasi']) }}"
+           style="background:#ffffff;color:#1e3a8a;padding:11px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
+            Latihan Simulasi Evakuasi →
+        </a>
+    </div>
+</div>
+
 @endsection

@@ -37,6 +37,31 @@ class User extends Authenticatable
         return $this->hasMany(SosRequest::class, 'user_id');
     }
 
+    public function learningProgress(): HasMany
+    {
+        return $this->hasMany(LearningProgress::class, 'user_id');
+    }
+
+    public function simulationResults(): HasMany
+    {
+        return $this->hasMany(SimulationResult::class, 'user_id');
+    }
+
+    public function quizResults(): HasMany
+    {
+        return $this->hasMany(QuizResult::class, 'user_id');
+    }
+
+    public function userMissions(): HasMany
+    {
+        return $this->hasMany(UserMission::class, 'user_id');
+    }
+
+    public function userBadges(): HasMany
+    {
+        return $this->hasMany(UserBadge::class, 'user_id');
+    }
+
     public function isReportStaff(): bool
     {
         return $this->role === 'petugas';

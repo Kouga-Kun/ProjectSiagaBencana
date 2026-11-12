@@ -75,6 +75,47 @@
 </section>
 
 <section class="profile-card">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;">
+        <div>
+            <h2 style="margin:0 0 4px 0;">🎓 Progres Edukasi Gempa Bumi &amp; Tsunami</h2>
+            <p style="margin:0;color:#64748b;font-size:14px;">Ringkasan materi belajar, simulasi, hasil kuis, misi siaga, dan badge kesiapsiagaan Anda.</p>
+        </div>
+        <a class="auth-button" href="{{ route('edukasi.index') }}">Buka Edukasi Bencana →</a>
+    </div>
+
+    @if (! empty($educationProgress))
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+            <div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <div style="font-size:12px;color:#64748b;">Progres Total</div>
+                <div style="font-size:1.35rem;font-weight:800;color:#1e3a8a;">{{ $educationProgress['overall_progress_percentage'] ?? 0 }}%</div>
+            </div>
+            <div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <div style="font-size:12px;color:#64748b;">Materi Selesai</div>
+                <div style="font-size:1.35rem;font-weight:800;color:#059669;">{{ $educationProgress['materials']['completed'] ?? 0 }} / {{ $educationProgress['materials']['total'] ?? 24 }}</div>
+            </div>
+            <div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <div style="font-size:12px;color:#64748b;">Nilai Kuis Gempa / Tsunami</div>
+                <div style="font-size:1.25rem;font-weight:800;color:#1e3a8a;">{{ $educationProgress['quizzes']['earthquake_best_average'] ?? 0 }} / {{ $educationProgress['quizzes']['tsunami_best_average'] ?? 0 }}</div>
+            </div>
+            <div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <div style="font-size:12px;color:#64748b;">Total Poin &amp; Badge</div>
+                <div style="font-size:1.25rem;font-weight:800;color:#d97706;">{{ $educationProgress['total_points'] ?? 0 }} Poin · {{ $educationProgress['badges']['earned_count'] ?? 0 }} Badge</div>
+            </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            @foreach ($educationProgress['badges']['items'] ?? [] as $badge)
+                <span style="padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:700;background:{{ $badge['is_earned'] ? '#dcfce7' : '#f1f5f9' }};color:{{ $badge['is_earned'] ? '#15803d' : '#64748b' }};">
+                    🏅 {{ $badge['name'] }} {{ $badge['is_earned'] ? '✓' : '' }}
+                </span>
+            @endforeach
+        </div>
+    @else
+        <p style="margin:0;color:#64748b;">Silakan login untuk menyimpan dan memantau capaian belajar, nilai kuis, serta badge kesiapsiagaan gempa bumi dan tsunami.</p>
+    @endif
+</section>
+
+<section class="profile-card">
     <h2>Pengaturan dan Bantuan</h2>
 
     <div class="menu-list">

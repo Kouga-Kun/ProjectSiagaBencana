@@ -233,4 +233,12 @@
         @endforeach
     </div>
 @endif
+
+<div style="margin-top:32px;padding:22px 26px;background:linear-gradient(135deg,#1e3a8a,#0f172a);color:#ffffff;border-radius:14px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;">
+    <div>
+        <h3 style="margin:0 0 4px 0;font-size:1.15rem;">🎓 Pelajari Cara Menghadapi Gempa Bumi dan Tsunami</h3>
+        <p style="margin:0;color:#cbd5e1;font-size:14px;">Kunjungi halaman Edukasi Bencana untuk mempelajari 24 materi resmi, simulasi skenario, kuis, dan misi siaga.</p>
+    </div>
+    <a href="{{ route('edukasi.index') }}" class="btn-read" style="background:#dc2626;color:#ffffff;">Buka Edukasi Bencana →</a>
+</div>
 @endsection

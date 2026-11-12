@@ -55,6 +55,32 @@
             </div>
 
             <div class="detail-content">{{ $article->content }}</div>
+
+            @php
+                $haystack = strtolower($article->category . ' ' . $article->title . ' ' . $article->summary);
+                $isTsunamiNews = str_contains($haystack, 'tsunami') || str_contains($haystack, 'pesisir') || str_contains($haystack, 'pantai');
+                $isGempaNews = str_contains($haystack, 'gempa') || str_contains($haystack, 'seismik') || str_contains($haystack, 'patahan') || str_contains($haystack, 'megathrust');
+                $eduCategory = $isTsunamiNews ? 'Tsunami' : ($isGempaNews ? 'Gempa Bumi' : '');
+            @endphp
+
+            <div style="margin-top:28px;padding:20px;border-radius:14px;background:#eff6ff;border:1px solid #bfdbfe;">
+                <h3 style="margin:0 0 8px 0;color:#1e3a8a;font-size:1.1rem;">
+                    🎓 Pelajari Mitigasi {{ $eduCategory !== '' ? $eduCategory : 'Gempa Bumi dan Tsunami' }}
+                </h3>
+                <p style="margin:0 0 14px 0;color:#334155;font-size:14.5px;line-height:1.6;">
+                    Tingkatkan kesiapsiagaan diri dan keluarga Anda dengan mempelajari langkah penyelamatan sebelum, saat, dan setelah bencana.
+                </p>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                    <a href="{{ route('edukasi.index', array_filter(['tab' => 'belajar', 'category' => $eduCategory])) }}"
+                       style="background:#1e3a8a;color:#ffffff;padding:9px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13.5px;">
+                        Buka Materi Edukasi {{ $eduCategory }} →
+                    </a>
+                    <a href="{{ route('edukasi.index', array_filter(['tab' => 'simulasi', 'category' => $eduCategory])) }}"
+                       style="background:#dc2626;color:#ffffff;padding:9px 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:13.5px;">
+                        Ikuti Simulasi Skenario →
+                    </a>
+                </div>
+            </div>
         </div>
     </article>
 </div>

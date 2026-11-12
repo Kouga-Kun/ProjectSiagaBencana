@@ -67,7 +67,10 @@
         @auth
             <a class="report-button" href="{{ route('laporan.create') }}">+ Buat laporan</a>
         @else
-            <a class="report-button secondary" href="{{ route('laporan.create') }}">Login untuk membuat laporan</a>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <a class="report-button secondary" href="{{ route('laporan.create') }}">Login untuk membuat laporan</a>
+                <a class="report-button secondary" href="{{ route('report-staff.login') }}">Login petugas</a>
+            </div>
         @endif
     </header>
 

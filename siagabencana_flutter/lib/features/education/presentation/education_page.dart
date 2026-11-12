@@ -57,13 +57,22 @@ class _EducationPageState extends State<EducationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = MediaQuery.sizeOf(context).width < 600
+        ? 18.0
+        : 30.0;
+
     return ListenableBuilder(
       listenable: _service,
       builder: (context, _) {
         final progress = _service.currentProgress;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            24,
+            horizontalPadding,
+            44,
+          ),
           children: [
             _buildHeaderBanner(),
             const SizedBox(height: 20),

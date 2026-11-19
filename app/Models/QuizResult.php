@@ -10,6 +10,7 @@ class QuizResult extends Model
     protected $fillable = [
         'user_id',
         'quiz_id',
+        'client_submission_id',
         'total_questions',
         'correct_answers',
         'wrong_answers',
@@ -44,7 +45,6 @@ class QuizResult extends Model
 
     public function quiz(): BelongsTo
     {
-        return $this->belongsTo(Quiz::class, 'quiz_id');
+        return $this->belongsTo(Quiz::class, 'quiz_id')->withTrashed();
     }
 }
-

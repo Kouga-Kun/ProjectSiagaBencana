@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class LearningMaterial extends Model
 {
+    use SoftDeletes;
+
     public const CATEGORY_EARTHQUAKE = 'Gempa Bumi';
 
     public const CATEGORY_TSUNAMI = 'Tsunami';
@@ -106,7 +109,7 @@ class LearningMaterial extends Model
         $counter = 2;
 
         while (
-            static::query()
+            static::withTrashed()
                 ->where('slug', $slug)
                 ->when($ignoreId !== null, fn ($query) => $query->where('id', '!=', $ignoreId))
                 ->exists()

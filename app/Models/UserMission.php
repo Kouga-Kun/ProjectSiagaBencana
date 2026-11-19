@@ -46,7 +46,7 @@ class UserMission extends Model
 
     public function mission(): BelongsTo
     {
-        return $this->belongsTo(Mission::class, 'mission_id');
+        return $this->belongsTo(Mission::class, 'mission_id')->withTrashed();
     }
 
     public static function labelForStatus(?string $status): string
@@ -58,4 +58,3 @@ class UserMission extends Model
         };
     }
 }
-

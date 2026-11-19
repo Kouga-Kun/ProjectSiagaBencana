@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LearningActivityLog;
 use App\Models\LearningCategory;
 use App\Models\LearningMaterial;
 use App\Models\LearningProgress;
+use App\Models\LearningReminderPreference;
 use App\Models\Mission;
 use App\Models\Quiz;
 use App\Models\QuizOption;
 use App\Models\QuizResult;
 use App\Models\Simulation;
 use App\Models\SimulationChoice;
+use App\Models\SimulationDraft;
 use App\Models\SimulationResult;
 use App\Models\UserMission;
 use App\Services\EducationProgressService;
 use Database\Seeders\DisasterEducationSeeder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -31,15 +35,20 @@ class DisasterEducationWebController extends Controller
         $user = $request->user();
         $progress = $this->progressService->buildUserProgress($user);
         $completedMaterialIds = $progress['materials']['completed_ids'] ?? [];
+        $userMaterialProgressMap = LearningProgress::query()
+            ->where('user_id', $user->id)
+            ->get()
+            ->keyBy('learning_material_id');
 
         $activeTab = (string) $request->query('tab', 'belajar');
-        if (! in_array($activeTab, ['belajar', 'simulasi', 'kuis', 'misi', 'progres'], true)) {
+        if (! in_array($activeTab, ['belajar', 'simulasi', 'kuis', 'misi', 'progres', 'pengingat'], true)) {
             $activeTab = 'belajar';
         }
 
         $selectedCategory = (string) $request->query('category', '');
         $selectedDifficulty = (string) $request->query('difficulty', '');
         $search = trim((string) $request->query('search', ''));
+        $favoritesOnly = $request->boolean('favorites');
 
         $materialsQuery = LearningMaterial::query()
             ->where('status', LearningMaterial::STATUS_PUBLISHED);
@@ -49,6 +58,10 @@ class DisasterEducationWebController extends Controller
         }
         if ($selectedDifficulty !== '' && in_array($selectedDifficulty, LearningMaterial::DIFFICULTIES, true)) {
             $materialsQuery->where('difficulty', $selectedDifficulty);
+        }
+        if ($favoritesOnly) {
+            $favIds = $progress['materials']['favorite_ids'] ?? [];
+            $materialsQuery->whereIn('id', $favIds ?: [0]);
         }
         if ($search !== '') {
             $materialsQuery->where(function ($q) use ($search) {
@@ -96,12 +109,10 @@ class DisasterEducationWebController extends Controller
             ->orderBy('id')
             ->get();
 
-        $userMissionMap = $user !== null
-            ? UserMission::query()
-                ->where('user_id', $user->id)
-                ->get()
-                ->keyBy('mission_id')
-            : collect();
+        $userMissionMap = UserMission::query()
+            ->where('user_id', $user->id)
+            ->get()
+            ->keyBy('mission_id');
 
         $categories = LearningCategory::query()
             ->orderBy('sort_order')
@@ -112,9 +123,11 @@ class DisasterEducationWebController extends Controller
             'selectedCategory' => $selectedCategory,
             'selectedDifficulty' => $selectedDifficulty,
             'search' => $search,
+            'favoritesOnly' => $favoritesOnly,
             'categories' => $categories,
             'materials' => $materials,
             'completedMaterialIds' => $completedMaterialIds,
+            'userMaterialProgressMap' => $userMaterialProgressMap,
             'simulations' => $simulations,
             'quizzes' => $quizzes,
             'missions' => $missions,
@@ -138,11 +151,12 @@ class DisasterEducationWebController extends Controller
             ->firstOrFail();
 
         $user = $request->user();
-        $isCompleted = $user !== null && LearningProgress::query()
+        $materialProgress = LearningProgress::query()
             ->where('user_id', $user->id)
             ->where('learning_material_id', $material->id)
-            ->where('is_completed', true)
-            ->exists();
+            ->first();
+
+        $isCompleted = (bool) ($materialProgress?->is_completed ?? false);
 
         $siblings = LearningMaterial::query()
             ->where('status', LearningMaterial::STATUS_PUBLISHED)
@@ -162,6 +176,7 @@ class DisasterEducationWebController extends Controller
         return view('edukasi-materi-detail', [
             'material' => $material,
             'isCompleted' => $isCompleted,
+            'materialProgress' => $materialProgress,
             'previousMaterial' => $previousMaterial,
             'nextMaterial' => $nextMaterial,
             'siblings' => $siblings,
@@ -179,18 +194,44 @@ class DisasterEducationWebController extends Controller
             ? $request->boolean('is_completed')
             : true;
 
-        LearningProgress::query()->updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'learning_material_id' => $learningMaterial->id,
-            ],
-            [
-                'is_completed' => $targetCompleted,
-                'completed_at' => $targetCompleted ? now() : null,
-            ]
-        );
+        $newBadges = DB::transaction(function () use ($user, $learningMaterial, $targetCompleted): array {
+            $existing = LearningProgress::query()
+                ->where('user_id', $user->id)
+                ->where('learning_material_id', $learningMaterial->id)
+                ->first();
 
-        $newBadges = $this->progressService->evaluateAndAwardBadges($user);
+            $wasAlreadyCompleted = (bool) ($existing?->is_completed ?? false);
+
+            LearningProgress::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'learning_material_id' => $learningMaterial->id,
+                ],
+                [
+                    'is_completed' => $targetCompleted,
+                    'last_position' => $targetCompleted ? 100 : (int) ($existing?->last_position ?? 0),
+                    'progress_percent' => $targetCompleted ? 100 : min(95, (int) ($existing?->progress_percent ?? 0)),
+                    'is_favorite' => (bool) ($existing?->is_favorite ?? false),
+                    'last_read_at' => now(),
+                    'completed_at' => $targetCompleted ? ($existing?->completed_at ?? now()) : null,
+                ]
+            );
+
+            if ($targetCompleted && ! $wasAlreadyCompleted) {
+                $this->progressService->logActivity(
+                    user: $user,
+                    activityType: LearningActivityLog::TYPE_MATERIAL_COMPLETED,
+                    subjectType: 'learning_material',
+                    subjectId: $learningMaterial->id,
+                    subjectTitle: $learningMaterial->title,
+                    category: $learningMaterial->category,
+                    pointsEarned: EducationProgressService::MATERIAL_COMPLETION_POINTS,
+                );
+            }
+
+            return $this->progressService->evaluateAndAwardBadges($user);
+        });
+
         $badgeNote = count($newBadges) > 0
             ? ' Selamat! Kamu mendapatkan badge baru: '.implode(', ', array_column($newBadges, 'name')).'.'
             : '';
@@ -221,14 +262,12 @@ class DisasterEducationWebController extends Controller
             ->firstOrFail();
 
         $user = $request->user();
-        $history = $user !== null
-            ? SimulationResult::query()
-                ->where('user_id', $user->id)
-                ->where('simulation_id', $simulation->id)
-                ->orderByDesc('completed_at')
-                ->limit(5)
-                ->get()
-            : collect();
+        $history = SimulationResult::query()
+            ->where('user_id', $user->id)
+            ->where('simulation_id', $simulation->id)
+            ->orderByDesc('completed_at')
+            ->limit(10)
+            ->get();
 
         return view('edukasi-simulasi-detail', [
             'simulation' => $simulation,
@@ -295,7 +334,12 @@ class DisasterEducationWebController extends Controller
         $normalizedScore = $maxScore > 0 ? (int) round(($totalScore / $maxScore) * 100) : 0;
 
         $user = $request->user();
-        if ($user !== null) {
+        DB::transaction(function () use ($user, $simulation, $normalizedScore, $correctCount, $steps, $stepReviews): void {
+            $previousBest = (int) (SimulationResult::query()
+                ->where('user_id', $user->id)
+                ->where('simulation_id', $simulation->id)
+                ->max('score') ?? 0);
+
             SimulationResult::create([
                 'user_id' => $user->id,
                 'simulation_id' => $simulation->id,
@@ -306,8 +350,25 @@ class DisasterEducationWebController extends Controller
                 'selected_answers' => $stepReviews,
                 'completed_at' => now(),
             ]);
+
+            SimulationDraft::query()
+                ->where('user_id', $user->id)
+                ->where('simulation_id', $simulation->id)
+                ->delete();
+
+            $this->progressService->logActivity(
+                user: $user,
+                activityType: LearningActivityLog::TYPE_SIMULATION_COMPLETED,
+                subjectType: 'simulation',
+                subjectId: $simulation->id,
+                subjectTitle: $simulation->title,
+                category: $simulation->category,
+                pointsEarned: max(0, $normalizedScore - $previousBest),
+                metadata: ['score' => $normalizedScore],
+            );
+
             $this->progressService->evaluateAndAwardBadges($user);
-        }
+        });
 
         return redirect()
             ->route('edukasi.simulasi.show', $simulation->slug)
@@ -336,14 +397,12 @@ class DisasterEducationWebController extends Controller
             ->firstOrFail();
 
         $user = $request->user();
-        $history = $user !== null
-            ? QuizResult::query()
-                ->where('user_id', $user->id)
-                ->where('quiz_id', $quiz->id)
-                ->orderByDesc('completed_at')
-                ->limit(5)
-                ->get()
-            : collect();
+        $history = QuizResult::query()
+            ->where('user_id', $user->id)
+            ->where('quiz_id', $quiz->id)
+            ->orderByDesc('completed_at')
+            ->limit(10)
+            ->get();
 
         return view('edukasi-kuis-detail', [
             'quiz' => $quiz,
@@ -418,7 +477,22 @@ class DisasterEducationWebController extends Controller
             ->toArray();
 
         $user = $request->user();
-        if ($user !== null) {
+        DB::transaction(function () use (
+            $user,
+            $quiz,
+            $totalQuestions,
+            $correctAnswers,
+            $wrongAnswers,
+            $finalScore,
+            $percentage,
+            $reviews,
+            $recommendedMaterials
+        ): void {
+            $previousBest = (int) (QuizResult::query()
+                ->where('user_id', $user->id)
+                ->where('quiz_id', $quiz->id)
+                ->max('final_score') ?? 0);
+
             QuizResult::create([
                 'user_id' => $user->id,
                 'quiz_id' => $quiz->id,
@@ -431,8 +505,20 @@ class DisasterEducationWebController extends Controller
                 'recommended_materials' => $recommendedMaterials,
                 'completed_at' => now(),
             ]);
+
+            $this->progressService->logActivity(
+                user: $user,
+                activityType: LearningActivityLog::TYPE_QUIZ_COMPLETED,
+                subjectType: 'quiz',
+                subjectId: $quiz->id,
+                subjectTitle: $quiz->title,
+                category: $quiz->category,
+                pointsEarned: max(0, $finalScore - $previousBest),
+                metadata: ['final_score' => $finalScore, 'percentage' => $percentage],
+            );
+
             $this->progressService->evaluateAndAwardBadges($user);
-        }
+        });
 
         return redirect()
             ->route('edukasi.kuis.show', $quiz->slug)
@@ -462,37 +548,91 @@ class DisasterEducationWebController extends Controller
         $user = $request->user();
         $status = (string) $validated['status'];
 
-        $existing = UserMission::query()
-            ->where('user_id', $user->id)
-            ->where('mission_id', $mission->id)
-            ->first();
+        DB::transaction(function () use ($user, $mission, $status, $validated): void {
+            $existing = UserMission::query()
+                ->where('user_id', $user->id)
+                ->where('mission_id', $mission->id)
+                ->first();
 
-        $startedAt = $existing?->started_at;
-        if ($status !== UserMission::STATUS_NOT_STARTED && $startedAt === null) {
-            $startedAt = now();
-        }
-        $completedAt = $status === UserMission::STATUS_COMPLETED
-            ? ($existing?->completed_at ?? now())
-            : null;
+            $prevStatus = $existing?->status ?? UserMission::STATUS_NOT_STARTED;
 
-        UserMission::query()->updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'mission_id' => $mission->id,
-            ],
-            [
-                'status' => $status,
-                'notes' => $validated['notes'] ?? $existing?->notes,
-                'started_at' => $startedAt,
-                'completed_at' => $completedAt,
-            ]
-        );
+            $startedAt = $existing?->started_at;
+            if ($status !== UserMission::STATUS_NOT_STARTED && $startedAt === null) {
+                $startedAt = now();
+            }
+            $completedAt = $status === UserMission::STATUS_COMPLETED
+                ? ($existing?->completed_at ?? now())
+                : null;
 
-        $this->progressService->evaluateAndAwardBadges($user);
+            UserMission::query()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'mission_id' => $mission->id,
+                ],
+                [
+                    'status' => $status,
+                    'notes' => $validated['notes'] ?? $existing?->notes,
+                    'started_at' => $startedAt,
+                    'completed_at' => $completedAt,
+                ]
+            );
+
+            if ($status === UserMission::STATUS_IN_PROGRESS && $prevStatus === UserMission::STATUS_NOT_STARTED) {
+                $this->progressService->logActivity(
+                    user: $user,
+                    activityType: LearningActivityLog::TYPE_MISSION_STARTED,
+                    subjectType: 'mission',
+                    subjectId: $mission->id,
+                    subjectTitle: $mission->title,
+                    category: $mission->category,
+                    pointsEarned: 0,
+                );
+            } elseif ($status === UserMission::STATUS_COMPLETED && $prevStatus !== UserMission::STATUS_COMPLETED) {
+                $this->progressService->logActivity(
+                    user: $user,
+                    activityType: LearningActivityLog::TYPE_MISSION_COMPLETED,
+                    subjectType: 'mission',
+                    subjectId: $mission->id,
+                    subjectTitle: $mission->title,
+                    category: $mission->category,
+                    pointsEarned: (int) $mission->points,
+                );
+            }
+
+            $this->progressService->evaluateAndAwardBadges($user);
+        });
 
         return redirect()
             ->route('edukasi.index', ['tab' => 'misi'])
             ->with('status', 'Status Misi Siaga "'.$mission->title.'" diperbarui menjadi '.UserMission::labelForStatus($status).'.');
     }
-}
 
+    public function updateReminderWeb(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'is_enabled' => ['nullable', 'boolean'],
+            'reminder_time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'frequency' => ['required', Rule::in(LearningReminderPreference::FREQUENCIES)],
+            'remind_unfinished_materials' => ['nullable', 'boolean'],
+            'remind_pending_missions' => ['nullable', 'boolean'],
+            'remind_inactive_learning' => ['nullable', 'boolean'],
+        ]);
+
+        $user = $request->user();
+        LearningReminderPreference::query()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'is_enabled' => $request->boolean('is_enabled'),
+                'reminder_time' => (string) $validated['reminder_time'],
+                'frequency' => (string) $validated['frequency'],
+                'remind_unfinished_materials' => $request->boolean('remind_unfinished_materials'),
+                'remind_pending_missions' => $request->boolean('remind_pending_missions'),
+                'remind_inactive_learning' => $request->boolean('remind_inactive_learning'),
+            ]
+        );
+
+        return redirect()
+            ->route('edukasi.index', ['tab' => 'pengingat'])
+            ->with('status', 'Pengaturan pengingat belajar berhasil disimpan.');
+    }
+}

@@ -10,6 +10,7 @@ class SimulationResult extends Model
     protected $fillable = [
         'user_id',
         'simulation_id',
+        'client_submission_id',
         'score',
         'max_score',
         'correct_choices',
@@ -40,7 +41,6 @@ class SimulationResult extends Model
 
     public function simulation(): BelongsTo
     {
-        return $this->belongsTo(Simulation::class, 'simulation_id');
+        return $this->belongsTo(Simulation::class, 'simulation_id')->withTrashed();
     }
 }
-

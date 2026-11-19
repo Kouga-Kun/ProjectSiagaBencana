@@ -319,6 +319,26 @@
     </section>
 
     <!-- BAGIAN PROGRES PENGGUNA -->
+    @if (! empty($progress['pending_reminders']))
+        <section style="background:#fffbeb;border:1px solid #fde68a;border-radius:16px;padding:16px 20px;margin-bottom:20px;">
+            <div style="font-weight:800;color:#92400e;margin-bottom:8px;">🔔 Pengingat Belajar Aktif</div>
+            <div style="display:grid;gap:8px;">
+                @foreach ($progress['pending_reminders'] as $rem)
+                    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;color:#78350f;">
+                        <span><strong>{{ $rem['title'] }}</strong> — {{ $rem['message'] }}</span>
+                        @if ($rem['target_type'] === 'material' && ! empty($rem['target_slug']))
+                            <a href="{{ route('edukasi.materi.show', $rem['target_slug']) }}" class="edu-btn edu-btn-navy" style="padding:6px 12px;font-size:12.5px;">Lanjutkan →</a>
+                        @elseif ($rem['target_type'] === 'simulation' && ! empty($rem['target_slug']))
+                            <a href="{{ route('edukasi.simulasi.show', $rem['target_slug']) }}" class="edu-btn edu-btn-primary" style="padding:6px 12px;font-size:12.5px;">Lanjutkan Simulasi →</a>
+                        @else
+                            <a href="{{ route('edukasi.index', ['tab' => 'misi']) }}#area-fitur" class="edu-btn edu-btn-navy" style="padding:6px 12px;font-size:12.5px;">Lihat Misi →</a>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     <section class="edu-progress-panel">
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;">
             <div>
@@ -327,7 +347,10 @@
                     {{ $progress['initial_state_message'] ?? 'Pantau capaian belajar, simulasi, kuis, dan misi kesiapsiagaan keluarga.' }}
                 </p>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                <span class="edu-chip chip-tsunami">
+                    🎖️ Level {{ $progress['level']['level_number'] ?? 1 }} · {{ $progress['level']['level_name'] ?? 'Pemula Siaga' }}
+                </span>
                 <span style="font-size:1.4rem;font-weight:800;color:#1e3a8a;">
                     {{ $progress['overall_progress_percentage'] ?? 0 }}%
                 </span>
@@ -383,7 +406,11 @@
         </a>
         <a href="{{ route('edukasi.index', ['tab' => 'progres']) }}#area-fitur"
            class="edu-tab-link {{ $activeTab === 'progres' ? 'active' : '' }}">
-            🏆 Progres &amp; Pencapaian
+            🏆 Progres &amp; Riwayat
+        </a>
+        <a href="{{ route('edukasi.index', ['tab' => 'pengingat']) }}#area-fitur"
+           class="edu-tab-link {{ $activeTab === 'pengingat' ? 'active' : '' }}">
+            🔔 Pengingat Belajar
         </a>
     </div>
 
@@ -567,8 +594,53 @@
                 </article>
             @endforeach
         </div>
+    @elseif ($activeTab === 'pengingat')
+        @php $remPref = $progress['reminder_preference'] ?? []; @endphp
+        <div class="edu-cat-card" style="max-width:680px;">
+            <h3 style="margin:0 0 8px 0;">🔔 Pengaturan Pengingat Belajar</h3>
+            <p style="margin:0 0 16px 0;color:#475569;font-size:14px;">
+                Aktifkan pengingat agar Anda dapat melanjutkan materi yang belum tuntas maupun Misi Siaga yang masih berlangsung. Pengingat otomatis melewati aktivitas yang sudah selesai dan tidak dikirim berlebihan.
+            </p>
+            <form method="POST" action="{{ route('edukasi.pengingat.update') }}" style="display:grid;gap:14px;">
+                @csrf
+                @method('PUT')
+                <label style="display:flex;align-items:center;gap:10px;font-weight:700;">
+                    <input type="checkbox" name="is_enabled" value="1" {{ ! empty($remPref['is_enabled']) ? 'checked' : '' }}>
+                    Aktifkan Pengingat Belajar pada Akun Ini
+                </label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">Waktu Pengingat</label>
+                        <input type="time" name="reminder_time" value="{{ $remPref['reminder_time'] ?? '19:00' }}" class="edu-input" style="width:100%;" required>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">Frekuensi</label>
+                        <select name="frequency" class="edu-select" style="width:100%;">
+                            <option value="daily" {{ ($remPref['frequency'] ?? 'daily') === 'daily' ? 'selected' : '' }}>Harian</option>
+                            <option value="every_3_days" {{ ($remPref['frequency'] ?? '') === 'every_3_days' ? 'selected' : '' }}>Setiap 3 Hari</option>
+                            <option value="weekly" {{ ($remPref['frequency'] ?? '') === 'weekly' ? 'selected' : '' }}>Mingguan</option>
+                        </select>
+                    </div>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+                    <input type="checkbox" name="remind_unfinished_materials" value="1" {{ ($remPref['remind_unfinished_materials'] ?? true) ? 'checked' : '' }}>
+                    Ingatkan materi yang belum selesai dibaca
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+                    <input type="checkbox" name="remind_pending_missions" value="1" {{ ($remPref['remind_pending_missions'] ?? true) ? 'checked' : '' }}>
+                    Ingatkan Misi Siaga yang masih tertunda
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+                    <input type="checkbox" name="remind_inactive_learning" value="1" {{ ($remPref['remind_inactive_learning'] ?? true) ? 'checked' : '' }}>
+                    Ingatkan untuk melanjutkan pembelajaran jika belum aktif &gt;24 jam
+                </label>
+                <div>
+                    <button type="submit" class="edu-btn edu-btn-navy">Simpan Pengaturan Pengingat</button>
+                </div>
+            </form>
+        </div>
     @else
-        <!-- TAB PROGRES & BADGE PENCAPAIAN -->
+        <!-- TAB PROGRES, GRAFIK, RIWAYAT AKTIVITAS & BADGE PENCAPAIAN -->
         <div class="edu-grid-2">
             <div class="edu-cat-card">
                 <h3 style="margin:0 0 12px 0;">Badge &amp; Penghargaan Kesiapsiagaan</h3>
@@ -577,7 +649,7 @@
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;border:1px solid {{ $badge['is_earned'] ? '#86efac' : '#e2e8f0' }};background:{{ $badge['is_earned'] ? '#f0fdf4' : '#f8fafc' }};">
                             <div>
                                 <div style="font-weight:800;color:#0f172a;">
-                                    🏅 {{ $badge['name'] }}
+                                    🏅 {{ $badge['name'] }} (+{{ $badge['points_reward'] }} Poin)
                                 </div>
                                 <div style="font-size:13px;color:#475569;margin-top:2px;">{{ $badge['description'] }}</div>
                                 <div style="font-size:12px;color:#64748b;margin-top:2px;">Syarat: {{ $badge['criteria_text'] }}</div>
@@ -591,16 +663,31 @@
             </div>
 
             <div class="edu-cat-card">
-                <h3 style="margin:0 0 12px 0;">Rincian Capaian Pembelajaran</h3>
-                <ul style="margin:0;padding-left:18px;line-height:1.8;color:#334155;">
-                    <li>Materi Gempa Bumi Selesai: <strong>{{ $progress['materials']['earthquake_completed'] ?? 0 }} / {{ $progress['materials']['earthquake_total'] ?? 12 }}</strong></li>
-                    <li>Materi Tsunami Selesai: <strong>{{ $progress['materials']['tsunami_completed'] ?? 0 }} / {{ $progress['materials']['tsunami_total'] ?? 12 }}</strong></li>
+                <h3 style="margin:0 0 12px 0;">Rincian Capaian &amp; Riwayat Aktivitas</h3>
+                <ul style="margin:0 0 16px 0;padding-left:18px;line-height:1.8;color:#334155;">
+                    <li>Level Saat Ini: <strong>Level {{ $progress['level']['level_number'] ?? 1 }} ({{ $progress['level']['level_name'] ?? 'Pemula Siaga' }})</strong></li>
+                    <li>Materi Gempa Bumi Selesai: <strong>{{ $progress['materials']['earthquake_completed'] ?? 0 }} / {{ $progress['materials']['earthquake_total'] ?? 12 }} ({{ $progress['materials']['earthquake_percentage'] ?? 0 }}%)</strong></li>
+                    <li>Materi Tsunami Selesai: <strong>{{ $progress['materials']['tsunami_completed'] ?? 0 }} / {{ $progress['materials']['tsunami_total'] ?? 12 }} ({{ $progress['materials']['tsunami_percentage'] ?? 0 }}%)</strong></li>
                     <li>Simulasi Skenario Diselesaikan: <strong>{{ $progress['simulations']['completed'] ?? 0 }} / {{ $progress['simulations']['total'] ?? 12 }}</strong></li>
-                    <li>Rata-rata Nilai Kuis Gempa Bumi: <strong>{{ $progress['quizzes']['earthquake_best_average'] ?? 0 }}</strong></li>
-                    <li>Rata-rata Nilai Kuis Tsunami: <strong>{{ $progress['quizzes']['tsunami_best_average'] ?? 0 }}</strong></li>
+                    <li>Nilai Kuis (Rata-rata / Terbaik): <strong>{{ $progress['quizzes']['average_score'] ?? 0 }} / {{ $progress['quizzes']['best_score'] ?? 0 }}</strong></li>
                     <li>Misi Siaga Selesai: <strong>{{ $progress['missions']['completed'] ?? 0 }} / {{ $progress['missions']['total'] ?? 14 }}</strong></li>
                     <li>Total Poin Kesiapsiagaan: <strong>{{ $progress['total_points'] ?? 0 }} Poin</strong></li>
                 </ul>
+
+                <h4 style="margin:0 0 8px 0;font-size:1rem;">Aktivitas Terakhir</h4>
+                <div style="display:grid;gap:8px;max-height:280px;overflow-y:auto;">
+                    @forelse ($progress['recent_activities'] ?? [] as $act)
+                        <div style="padding:9px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;">
+                            <div style="font-weight:700;color:#0f172a;">{{ $act['type_label'] }}: {{ $act['subject_title'] }}</div>
+                            <div style="font-size:12px;color:#64748b;">
+                                {{ $act['category'] ?? 'Umum' }}
+                                @if (($act['points_earned'] ?? 0) > 0) · +{{ $act['points_earned'] }} Poin @endif
+                            </div>
+                        </div>
+                    @empty
+                        <p style="font-size:13px;color:#64748b;margin:0;">Belum ada riwayat aktivitas. Mulailah membaca materi pertama Anda!</p>
+                    @endforelse
+                </div>
             </div>
         </div>
     @endif

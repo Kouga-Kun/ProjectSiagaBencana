@@ -113,6 +113,7 @@ class _NewsPageState extends State<NewsPage> {
         builder: (context) => NewsDetailPage(
           initialArticle: article,
           dataService: _service,
+          onOpenEducation: () => widget.onOpenSection(AppSection.education),
         ),
       ),
     );

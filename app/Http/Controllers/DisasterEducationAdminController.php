@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Badge;
 use App\Models\LearningCategory;
 use App\Models\LearningMaterial;
 use App\Models\Mission;
@@ -125,11 +126,10 @@ class DisasterEducationAdminController extends Controller
     public function destroyMaterialJson(LearningMaterial $learningMaterial): JsonResponse
     {
         $title = $learningMaterial->title;
-        $this->deleteStoredImageIfLocal($learningMaterial->image_path);
         $learningMaterial->delete();
 
         return response()->json([
-            'message' => 'Materi edukasi "'.$title.'" berhasil dihapus.',
+            'message' => 'Materi edukasi "'.$title.'" berhasil diarsipkan (riwayat belajar pengguna tetap terjaga).',
         ]);
     }
 
@@ -347,7 +347,57 @@ class DisasterEducationAdminController extends Controller
         DisasterEducationSeeder::ensureSeeded();
 
         return response()->json([
-            'data' => $this->progressService->buildAdminProgressOverview(),
+            'data' => $this->progressService->buildAdminAnalytics(),
+        ]);
+    }
+
+    public function adminAnalyticsJson(): JsonResponse
+    {
+        DisasterEducationSeeder::ensureSeeded();
+
+        return response()->json([
+            'data' => $this->progressService->buildAdminAnalytics(),
+        ]);
+    }
+
+    public function adminBadgesIndexJson(): JsonResponse
+    {
+        DisasterEducationSeeder::ensureSeeded();
+
+        $badges = Badge::query()
+            ->withCount('userBadges as awarded_users_count')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Badge $b) => [
+                'id' => $b->id,
+                'code' => $b->code,
+                'name' => $b->name,
+                'description' => $b->description,
+                'criteria_description' => $b->criteria_description,
+                'icon' => $b->icon,
+                'category' => $b->category,
+                'points_reward' => (int) $b->points_reward,
+                'awarded_users_count' => (int) $b->awarded_users_count,
+            ])
+            ->values();
+
+        return response()->json(['data' => $badges]);
+    }
+
+    public function updateBadgeJson(Request $request, Badge $badge): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'description' => ['required', 'string', 'max:500'],
+            'criteria_description' => ['required', 'string', 'max:300'],
+            'points_reward' => ['required', 'integer', 'min:0', 'max:1000'],
+        ]);
+
+        $badge->update($validated);
+
+        return response()->json([
+            'message' => 'Badge "'.$badge->name.'" berhasil diperbarui.',
+            'data' => $badge->fresh(),
         ]);
     }
 
@@ -359,9 +409,9 @@ class DisasterEducationAdminController extends Controller
     {
         DisasterEducationSeeder::ensureSeeded();
 
-        $activeTab = (string) $request->query('tab', 'materi');
-        if (! in_array($activeTab, ['materi', 'simulasi', 'kuis', 'misi', 'progres'], true)) {
-            $activeTab = 'materi';
+        $activeTab = (string) $request->query('tab', 'analitik');
+        if (! in_array($activeTab, ['analitik', 'materi', 'simulasi', 'kuis', 'misi', 'badge', 'progres'], true)) {
+            $activeTab = 'analitik';
         }
 
         $materials = LearningMaterial::query()
@@ -390,7 +440,12 @@ class DisasterEducationAdminController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $progressOverview = $this->progressService->buildAdminProgressOverview();
+        $badges = Badge::query()
+            ->withCount('userBadges as awarded_users_count')
+            ->orderBy('id')
+            ->get();
+
+        $progressOverview = $this->progressService->buildAdminAnalytics();
 
         $editingMaterial = $request->filled('edit_materi')
             ? LearningMaterial::find((int) $request->query('edit_materi'))
@@ -404,6 +459,9 @@ class DisasterEducationAdminController extends Controller
         $editingMission = $request->filled('edit_misi')
             ? Mission::find((int) $request->query('edit_misi'))
             : null;
+        $editingBadge = $request->filled('edit_badge')
+            ? Badge::find((int) $request->query('edit_badge'))
+            : null;
 
         return view('petugas.edukasi', [
             'activeTab' => $activeTab,
@@ -411,14 +469,32 @@ class DisasterEducationAdminController extends Controller
             'simulations' => $simulations,
             'quizzes' => $quizzes,
             'missions' => $missions,
+            'badges' => $badges,
             'progressOverview' => $progressOverview,
             'editingMaterial' => $editingMaterial,
             'editingSimulation' => $editingSimulation,
             'editingQuiz' => $editingQuiz,
             'editingMission' => $editingMission,
+            'editingBadge' => $editingBadge,
             'categories' => LearningMaterial::CATEGORIES,
             'difficulties' => LearningMaterial::DIFFICULTIES,
         ]);
+    }
+
+    public function updateBadgeWeb(Request $request, Badge $badge): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'description' => ['required', 'string', 'max:500'],
+            'criteria_description' => ['required', 'string', 'max:300'],
+            'points_reward' => ['required', 'integer', 'min:0', 'max:1000'],
+        ]);
+
+        $badge->update($validated);
+
+        return redirect()
+            ->route('petugas.edukasi.index', ['tab' => 'badge'])
+            ->with('status', 'Badge "'.$badge->name.'" berhasil diperbarui.');
     }
 
     public function storeMaterialWeb(Request $request): RedirectResponse
@@ -456,12 +532,11 @@ class DisasterEducationAdminController extends Controller
     public function destroyMaterialWeb(LearningMaterial $learningMaterial): RedirectResponse
     {
         $title = $learningMaterial->title;
-        $this->deleteStoredImageIfLocal($learningMaterial->image_path);
         $learningMaterial->delete();
 
         return redirect()
             ->route('petugas.edukasi.index', ['tab' => 'materi'])
-            ->with('status', 'Materi "'.$title.'" berhasil dihapus.');
+            ->with('status', 'Materi "'.$title.'" berhasil diarsipkan (riwayat belajar pengguna tetap terjaga).');
     }
 
     public function storeSimulationWeb(Request $request): RedirectResponse
@@ -1017,7 +1092,7 @@ class DisasterEducationAdminController extends Controller
         $slug = $base;
         $counter = 2;
 
-        while ($modelClass::query()
+        while ((method_exists($modelClass, 'withTrashed') ? $modelClass::withTrashed() : $modelClass::query())
             ->when($ignoreId !== null, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->where('slug', $slug)
             ->exists()) {

@@ -11,6 +11,7 @@ class AuthPage extends StatefulWidget {
     required this.onOpenSection,
     required this.authService,
     required this.onAuthenticated,
+    this.noticeMessage,
     super.key,
   });
 
@@ -18,6 +19,7 @@ class AuthPage extends StatefulWidget {
   final ValueChanged<AppSection> onOpenSection;
   final AuthSessionService authService;
   final ValueChanged<AuthUser> onAuthenticated;
+  final String? noticeMessage;
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -157,11 +159,21 @@ class _AuthPageState extends State<AuthPage> {
           title: isRegistration ? 'Daftar akun warga' : 'Masuk ke akun',
           description: isRegistration
               ? 'Buat akun untuk menggunakan fitur SiagaBencana.'
-              : 'Masuk untuk membuka profil dan fitur pelaporan.',
+              : 'Masuk untuk membuka profil, fitur pelaporan, dan Edukasi Bencana.',
           icon: isRegistration
               ? Icons.person_add_alt_1_rounded
               : Icons.login_rounded,
         ),
+        if (widget.noticeMessage != null &&
+            widget.noticeMessage!.trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          SiagaNotice(
+            title: 'Login Diperlukan',
+            message: widget.noticeMessage!,
+            tone: SiagaTone.warning,
+            icon: Icons.lock_outline_rounded,
+          ),
+        ],
         const SizedBox(height: 24),
         LayoutBuilder(
           builder: (context, constraints) {

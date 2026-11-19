@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureReportStaff;
+use App\Http\Middleware\RejectCrossAccountAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'report.staff' => EnsureReportStaff::class,
+            'education.own' => RejectCrossAccountAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

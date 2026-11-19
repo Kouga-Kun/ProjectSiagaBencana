@@ -14,6 +14,7 @@ class ProfilePage extends StatelessWidget {
     required this.statusError,
     required this.onRetryStatus,
     required this.onLogout,
+    this.educationService,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class ProfilePage extends StatelessWidget {
   final String? statusError;
   final VoidCallback onRetryStatus;
   final Future<void> Function() onLogout;
+  final EducationDataService? educationService;
 
   static const _contacts = [
     _EmergencyContact('BPBD Kota Padang', '0751-778775'),
@@ -189,10 +191,13 @@ class ProfilePage extends StatelessWidget {
               },
             ),
           ),
-        const SizedBox(height: 24),
-        _ProfileEducationProgressCard(
-          onOpenEducation: () => onOpenSection(AppSection.education),
-        ),
+        if (user != null && educationService != null) ...[
+          const SizedBox(height: 24),
+          _ProfileEducationProgressCard(
+            service: educationService!,
+            onOpenEducation: () => onOpenSection(AppSection.education),
+          ),
+        ],
         const SizedBox(height: 24),
         const SiagaSectionHeader(
           title: 'Pengaturan dan bantuan',
@@ -347,13 +352,16 @@ class _ProfileFeatureCard extends StatelessWidget {
 }
 
 class _ProfileEducationProgressCard extends StatelessWidget {
-  const _ProfileEducationProgressCard({required this.onOpenEducation});
+  const _ProfileEducationProgressCard({
+    required this.service,
+    required this.onOpenEducation,
+  });
 
+  final EducationDataService service;
   final VoidCallback onOpenEducation;
 
   @override
   Widget build(BuildContext context) {
-    final service = EducationDataService.instance;
     return ListenableBuilder(
       listenable: service,
       builder: (context, _) {

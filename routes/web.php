@@ -20,25 +20,27 @@ Route::get('/berita', [NewsArticleController::class, 'publicIndexWeb'])->name('b
 Route::get('/berita/{slug}', [NewsArticleController::class, 'publicShowWeb'])->name('berita.show');
 Route::view('/mitigasi', 'mitigasi')->name('mitigasi');
 
-// Halaman Web Edukasi Bencana (Gempa Bumi & Tsunami)
-Route::get('/edukasi', [DisasterEducationWebController::class, 'index'])
-    ->name('edukasi.index');
-Route::get('/edukasi/materi/{slug}', [DisasterEducationWebController::class, 'showMaterial'])
-    ->name('edukasi.materi.show');
-Route::post('/edukasi/materi/{learningMaterial}/selesai', [DisasterEducationWebController::class, 'completeMaterial'])
-    ->middleware('auth')
-    ->name('edukasi.materi.complete');
-Route::get('/edukasi/simulasi/{slug}', [DisasterEducationWebController::class, 'showSimulation'])
-    ->name('edukasi.simulasi.show');
-Route::post('/edukasi/simulasi/{simulation}/submit', [DisasterEducationWebController::class, 'submitSimulation'])
-    ->name('edukasi.simulasi.submit');
-Route::get('/edukasi/kuis/{slug}', [DisasterEducationWebController::class, 'showQuiz'])
-    ->name('edukasi.kuis.show');
-Route::post('/edukasi/kuis/{quiz}/submit', [DisasterEducationWebController::class, 'submitQuiz'])
-    ->name('edukasi.kuis.submit');
-Route::post('/edukasi/misi/{mission}/status', [DisasterEducationWebController::class, 'updateMissionStatus'])
-    ->middleware('auth')
-    ->name('edukasi.misi.status');
+// Halaman Web Edukasi Bencana (Gempa Bumi & Tsunami) — Wajib Login
+Route::middleware('auth')->group(function () {
+    Route::get('/edukasi', [DisasterEducationWebController::class, 'index'])
+        ->name('edukasi.index');
+    Route::get('/edukasi/materi/{slug}', [DisasterEducationWebController::class, 'showMaterial'])
+        ->name('edukasi.materi.show');
+    Route::post('/edukasi/materi/{learningMaterial}/selesai', [DisasterEducationWebController::class, 'completeMaterial'])
+        ->name('edukasi.materi.complete');
+    Route::get('/edukasi/simulasi/{slug}', [DisasterEducationWebController::class, 'showSimulation'])
+        ->name('edukasi.simulasi.show');
+    Route::post('/edukasi/simulasi/{simulation}/submit', [DisasterEducationWebController::class, 'submitSimulation'])
+        ->name('edukasi.simulasi.submit');
+    Route::get('/edukasi/kuis/{slug}', [DisasterEducationWebController::class, 'showQuiz'])
+        ->name('edukasi.kuis.show');
+    Route::post('/edukasi/kuis/{quiz}/submit', [DisasterEducationWebController::class, 'submitQuiz'])
+        ->name('edukasi.kuis.submit');
+    Route::post('/edukasi/misi/{mission}/status', [DisasterEducationWebController::class, 'updateMissionStatus'])
+        ->name('edukasi.misi.status');
+    Route::put('/edukasi/pengingat', [DisasterEducationWebController::class, 'updateReminderWeb'])
+        ->name('edukasi.pengingat.update');
+});
 
 Route::get('/laporan', [DisasterReportController::class, 'index'])
     ->name('laporan');
@@ -248,12 +250,26 @@ Route::middleware(['auth', 'report.staff'])->group(function () {
         ->name('petugas.edukasi.misi.publish');
     Route::delete('/petugas/edukasi/misi/{mission}', [DisasterEducationAdminController::class, 'destroyMissionWeb'])
         ->name('petugas.edukasi.misi.destroy');
+
+    Route::match(['put', 'patch'], '/petugas/edukasi/badge/{badge}', [DisasterEducationAdminController::class, 'updateBadgeWeb'])
+        ->name('petugas.edukasi.badge.update');
 });
 
-// API Edukasi Bencana (Gempa Bumi & Tsunami) untuk Flutter & Web
-Route::prefix('/api/edukasi')->name('api.edukasi.')->group(function () {
+// API Edukasi Bencana (Gempa Bumi & Tsunami) untuk Flutter & Web — Wajib Login & Anti Akses Lintas Akun
+Route::middleware(['auth', 'education.own'])->prefix('/api/edukasi')->name('api.edukasi.')->group(function () {
     Route::get('/', [DisasterEducationApiController::class, 'summaryJson'])
         ->name('summary');
+
+    Route::get('/progres', [DisasterEducationApiController::class, 'progressJson'])
+        ->name('progres');
+    Route::get('/riwayat', [DisasterEducationApiController::class, 'historyJson'])
+        ->name('riwayat');
+    Route::get('/badge', [DisasterEducationApiController::class, 'badgesJson'])
+        ->name('badge');
+    Route::get('/pengingat', [DisasterEducationApiController::class, 'reminderShowJson'])
+        ->name('pengingat.show');
+    Route::match(['put', 'post'], '/pengingat', [DisasterEducationApiController::class, 'reminderUpdateJson'])
+        ->name('pengingat.update');
 
     Route::get('/materi', [DisasterEducationApiController::class, 'materialsIndexJson'])
         ->name('materi.index');
@@ -261,34 +277,39 @@ Route::prefix('/api/edukasi')->name('api.edukasi.')->group(function () {
         ->name('materi.image');
     Route::get('/materi/{slug}', [DisasterEducationApiController::class, 'materialShowJson'])
         ->name('materi.show');
+    Route::post('/materi/{learningMaterial}/progres', [DisasterEducationApiController::class, 'saveMaterialProgressJson'])
+        ->name('materi.progress');
     Route::post('/materi/{learningMaterial}/selesai', [DisasterEducationApiController::class, 'completeMaterialJson'])
-        ->middleware('auth')
         ->name('materi.complete');
 
     Route::get('/simulasi', [DisasterEducationApiController::class, 'simulationsIndexJson'])
         ->name('simulasi.index');
     Route::get('/simulasi/{slug}', [DisasterEducationApiController::class, 'simulationShowJson'])
         ->name('simulasi.show');
+    Route::post('/simulasi/{simulation}/progres', [DisasterEducationApiController::class, 'saveSimulationProgressJson'])
+        ->name('simulasi.progress');
     Route::post('/simulasi/{simulation}/submit', [DisasterEducationApiController::class, 'submitSimulationJson'])
-        ->middleware('auth')
         ->name('simulasi.submit');
+    Route::post('/simulasi/{simulation}/hasil', [DisasterEducationApiController::class, 'submitSimulationJson'])
+        ->name('simulasi.result');
 
     Route::get('/kuis', [DisasterEducationApiController::class, 'quizzesIndexJson'])
         ->name('kuis.index');
     Route::get('/kuis/{slug}', [DisasterEducationApiController::class, 'quizShowJson'])
         ->name('kuis.show');
     Route::post('/kuis/{quiz}/submit', [DisasterEducationApiController::class, 'submitQuizJson'])
-        ->middleware('auth')
         ->name('kuis.submit');
+    Route::post('/kuis/{quiz}/hasil', [DisasterEducationApiController::class, 'submitQuizJson'])
+        ->name('kuis.result');
 
     Route::get('/misi', [DisasterEducationApiController::class, 'missionsIndexJson'])
         ->name('misi.index');
+    Route::post('/misi/{mission}/progres', [DisasterEducationApiController::class, 'startMissionJson'])
+        ->name('misi.progress');
+    Route::post('/misi/{mission}/selesai', [DisasterEducationApiController::class, 'completeMissionJson'])
+        ->name('misi.complete');
     Route::match(['patch', 'post'], '/misi/{mission}/status', [DisasterEducationApiController::class, 'updateMissionStatusJson'])
-        ->middleware('auth')
         ->name('misi.status');
-
-    Route::get('/progres', [DisasterEducationApiController::class, 'progressJson'])
-        ->name('progres');
 });
 
 // API Admin Edukasi Bencana untuk Petugas/Admin
@@ -297,6 +318,12 @@ Route::middleware(['auth', 'report.staff'])->prefix('/api/admin/edukasi')->name(
         ->name('overview');
     Route::get('/progres', [DisasterEducationAdminController::class, 'adminProgressOverviewJson'])
         ->name('progres');
+    Route::get('/analytics', [DisasterEducationAdminController::class, 'adminAnalyticsJson'])
+        ->name('analytics');
+    Route::get('/badge', [DisasterEducationAdminController::class, 'adminBadgesIndexJson'])
+        ->name('badge.index');
+    Route::match(['put', 'patch'], '/badge/{badge}', [DisasterEducationAdminController::class, 'updateBadgeJson'])
+        ->name('badge.update');
 
     Route::get('/materi', [DisasterEducationAdminController::class, 'adminMaterialsIndexJson'])
         ->name('materi.index');

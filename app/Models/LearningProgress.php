@@ -13,6 +13,11 @@ class LearningProgress extends Model
         'user_id',
         'learning_material_id',
         'is_completed',
+        'last_position',
+        'last_section',
+        'progress_percent',
+        'is_favorite',
+        'last_read_at',
         'completed_at',
     ];
 
@@ -23,6 +28,10 @@ class LearningProgress extends Model
     {
         return [
             'is_completed' => 'boolean',
+            'last_position' => 'integer',
+            'progress_percent' => 'integer',
+            'is_favorite' => 'boolean',
+            'last_read_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
     }
@@ -34,7 +43,6 @@ class LearningProgress extends Model
 
     public function material(): BelongsTo
     {
-        return $this->belongsTo(LearningMaterial::class, 'learning_material_id');
+        return $this->belongsTo(LearningMaterial::class, 'learning_material_id')->withTrashed();
     }
 }
-

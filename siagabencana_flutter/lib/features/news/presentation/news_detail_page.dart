@@ -4,19 +4,19 @@ import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
-import '../../education/data/education_data_service.dart';
-import '../../education/presentation/education_material_detail_page.dart';
 import '../data/news_data_service.dart';
 
 class NewsDetailPage extends StatefulWidget {
   const NewsDetailPage({
     required this.initialArticle,
     this.dataService,
+    this.onOpenEducation,
     super.key,
   });
 
   final NewsArticleItem initialArticle;
   final NewsDataService? dataService;
+  final VoidCallback? onOpenEducation;
 
   @override
   State<NewsDetailPage> createState() => _NewsDetailPageState();
@@ -333,30 +333,15 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                                     children: [
                                       FilledButton.icon(
                                         onPressed: () {
-                                          final text =
-                                              '${_article.title} ${_article.summary} ${_article.content}'
-                                                  .toLowerCase();
-                                          final slug = text.contains('tsunami')
-                                              ? 'peringatan-dini-tsunami'
-                                              : 'tindakan-saat-gempa-dalam-ruangan';
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute<void>(
-                                              builder: (_) =>
-                                                  EducationMaterialDetailPage(
-                                                    materialSlugOrId: slug,
-                                                    service:
-                                                        EducationDataService
-                                                            .instance,
-                                                  ),
-                                            ),
-                                          );
+                                          Navigator.of(context).pop();
+                                          widget.onOpenEducation?.call();
                                         },
                                         icon: const Icon(
                                           Icons.menu_book_rounded,
                                           size: 18,
                                         ),
                                         label: const Text(
-                                          'Baca Panduan Keselamatan Terkait',
+                                          'Buka Edukasi Gempa & Tsunami',
                                         ),
                                       ),
                                     ],

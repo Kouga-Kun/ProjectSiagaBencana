@@ -269,7 +269,7 @@ class UserAuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('profil')->with('status', 'Pendaftaran berhasil. Selamat datang di SiagaBencana.');
+        return redirect()->intended(route('profil'))->with('status', 'Pendaftaran berhasil. Selamat datang di SiagaBencana.');
     }
 
     public function showProfile(EducationProgressService $progressService): View

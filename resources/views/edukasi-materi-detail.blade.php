@@ -64,18 +64,32 @@
     <div class="mat-wrap">
         <div>
             <article class="mat-card">
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-                    <span class="mat-chip" style="background:{{ $material->category === 'Gempa Bumi' ? '#fef3c7' : '#e0f2fe' }};color:{{ $material->category === 'Gempa Bumi' ? '#b45309' : '#0369a1' }};">
-                        {{ $material->category }}
-                    </span>
-                    <span class="mat-chip" style="background:#f1f5f9;color:#334155;">
-                        Tingkat: {{ $material->difficulty }}
-                    </span>
-                    @if ($isCompleted)
-                        <span class="mat-chip" style="background:#dcfce7;color:#15803d;">
-                            ✓ Telah Dipelajari
+                <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        <span class="mat-chip" style="background:{{ $material->category === 'Gempa Bumi' ? '#fef3c7' : '#e0f2fe' }};color:{{ $material->category === 'Gempa Bumi' ? '#b45309' : '#0369a1' }};">
+                            {{ $material->category }}
                         </span>
-                    @endif
+                        <span class="mat-chip" style="background:#f1f5f9;color:#334155;">
+                            Tingkat: {{ $material->difficulty }}
+                        </span>
+                        @if ($isCompleted)
+                            <span class="mat-chip" style="background:#dcfce7;color:#15803d;">
+                                ✓ Telah Dipelajari
+                            </span>
+                        @elseif (($materialProgress?->progress_percent ?? 0) > 0)
+                            <span class="mat-chip" style="background:#fef9c3;color:#a16207;">
+                                Melanjutkan · {{ $materialProgress->progress_percent }}%
+                            </span>
+                        @endif
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span id="autosave-status" class="mat-chip" style="background:#f8fafc;color:#475569;border:1px solid #cbd5e1;">
+                            💾 Progres tersimpan otomatis
+                        </span>
+                        <button type="button" id="favorite-toggle-btn" class="mat-btn" style="padding:6px 12px;font-size:13px;background:{{ $materialProgress?->is_favorite ? '#fef3c7' : '#f1f5f9' }};color:{{ $materialProgress?->is_favorite ? '#b45309' : '#334155' }};">
+                            {{ $materialProgress?->is_favorite ? '★ Favorit' : '☆ Tandai Favorit' }}
+                        </button>
+                    </div>
                 </div>
 
                 <h1 style="margin:0 0 14px 0;font-size:1.75rem;line-height:1.3;">{{ $material->title }}</h1>
@@ -198,5 +212,75 @@
             </div>
         </aside>
     </div>
+
+    <script>
+        (function () {
+            const endpoint = @json(route('api.edukasi.materi.progress', $material));
+            const csrfToken = @json(csrf_token());
+            const savedPosition = {{ (int) ($materialProgress?->last_position ?? 0) }};
+            let isFavorite = {{ $materialProgress?->is_favorite ? 'true' : 'false' }};
+            let lastSentPercent = {{ (int) ($materialProgress?->progress_percent ?? 0) }};
+            let debounceTimer = null;
+            const statusEl = document.getElementById('autosave-status');
+            const favBtn = document.getElementById('favorite-toggle-btn');
+
+            function setStatus(text, bg, color) {
+                if (!statusEl) return;
+                statusEl.textContent = text;
+                statusEl.style.background = bg;
+                statusEl.style.color = color;
+            }
+
+            async function sendProgress(payload) {
+                setStatus('⏳ Sedang menyimpan...', '#eff6ff', '#1e3a8a');
+                try {
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        throw new Error('HTTP ' + res.status);
+                    }
+                    setStatus('✓ Progres tersimpan', '#dcfce7', '#15803d');
+                } catch (e) {
+                    setStatus('⚠️ Gagal menyimpan (coba gulir lagi)', '#fef2f2', '#b91c1c');
+                }
+            }
+
+            window.addEventListener('load', function () {
+                if (savedPosition > 10 && savedPosition < 98) {
+                    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+                    window.scrollTo({ top: Math.round((savedPosition / 100) * maxScroll), behavior: 'smooth' });
+                }
+            });
+
+            window.addEventListener('scroll', function () {
+                const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+                const pct = Math.min(100, Math.max(5, Math.round((window.scrollY / maxScroll) * 100)));
+                if (Math.abs(pct - lastSentPercent) < 8) return;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(function () {
+                    lastSentPercent = pct;
+                    sendProgress({ last_position: pct, progress_percent: pct, last_section: pct < 40 ? 'penjelasan' : (pct < 75 ? 'langkah-tindakan' : 'ringkasan') });
+                }, 1000);
+            });
+
+            if (favBtn) {
+                favBtn.addEventListener('click', function () {
+                    isFavorite = !isFavorite;
+                    favBtn.textContent = isFavorite ? '★ Favorit' : '☆ Tandai Favorit';
+                    favBtn.style.background = isFavorite ? '#fef3c7' : '#f1f5f9';
+                    favBtn.style.color = isFavorite ? '#b45309' : '#334155';
+                    sendProgress({ is_favorite: isFavorite });
+                });
+            }
+        })();
+    </script>
 @endsection
 

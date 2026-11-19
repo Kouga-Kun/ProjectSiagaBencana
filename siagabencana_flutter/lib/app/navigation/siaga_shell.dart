@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/auth/data/auth_session_service.dart';
 import '../../features/auth/presentation/auth_page.dart';
+import '../../features/education/data/education_data_service.dart';
 import '../../features/education/presentation/education_page.dart';
 import '../../features/evacuation/presentation/evacuation_page.dart';
 import '../../features/home/presentation/home_page.dart';
@@ -17,10 +18,16 @@ import '../siaga_theme.dart';
 import 'app_section.dart';
 
 class SiagaShell extends StatefulWidget {
-  const SiagaShell({this.homeDataService, this.authSessionService, super.key});
+  const SiagaShell({
+    this.homeDataService,
+    this.authSessionService,
+    this.educationDataService,
+    super.key,
+  });
 
   final HomeDataService? homeDataService;
   final AuthSessionService? authSessionService;
+  final EducationDataService? educationDataService;
 
   @override
   State<SiagaShell> createState() => _SiagaShellState();
@@ -28,8 +35,12 @@ class SiagaShell extends StatefulWidget {
 
 class _SiagaShellState extends State<SiagaShell> {
   AppSection _currentSection = AppSection.home;
+  AppSection? _intendedSection;
+  String? _authRedirectNotice;
   late final AuthSessionService _authService;
+  late final EducationDataService _educationService;
   bool _ownsAuthService = false;
+  bool _ownsEducationService = false;
   AuthUser? _authUser;
   bool _authStatusLoading = true;
   String? _authStatusError;
@@ -41,58 +52,126 @@ class _SiagaShellState extends State<SiagaShell> {
     _authService =
         widget.authSessionService ??
         AuthSessionService(apiConfig: const ApiConfig.fromEnvironment());
+    _ownsEducationService = widget.educationDataService == null;
+    _educationService =
+        widget.educationDataService ??
+        EducationDataService(
+          apiConfig: _authService.apiConfig,
+          authService: _authService,
+          onUnauthorized: _handleEducationUnauthorized,
+        );
     unawaited(_refreshAuthStatus());
   }
 
   @override
   void dispose() {
+    if (_ownsEducationService) {
+      _educationService.dispose();
+    }
     if (_ownsAuthService) {
       _authService.close();
     }
     super.dispose();
   }
 
+  void _handleEducationUnauthorized() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _authUser = null;
+      _intendedSection = AppSection.education;
+      _authRedirectNotice =
+          'Sesi login Anda berakhir. Silakan masuk kembali untuk mengakses Edukasi Bencana.';
+      if (_currentSection == AppSection.education) {
+        _currentSection = AppSection.login;
+      }
+    });
+  }
+
   Future<void> _refreshAuthStatus() async {
     try {
       final user = await _authService.fetchCurrentUser();
       if (!mounted) return;
+      _educationService.bindUser(user);
       setState(() {
         _authUser = user;
         _authStatusError = null;
         _authStatusLoading = false;
+        if (user == null && _currentSection == AppSection.education) {
+          _intendedSection = AppSection.education;
+          _authRedirectNotice =
+              'Silakan masuk ke akun SiagaBencana untuk mengakses fitur Edukasi Bencana.';
+          _currentSection = AppSection.login;
+        }
       });
     } on AuthSessionException catch (error) {
       if (!mounted) return;
+      _educationService.clearSession();
       setState(() {
         _authUser = null;
         _authStatusError = error.message;
         _authStatusLoading = false;
+        if (_currentSection == AppSection.education) {
+          _intendedSection = AppSection.education;
+          _authRedirectNotice =
+              'Silakan masuk ke akun SiagaBencana untuk mengakses fitur Edukasi Bencana.';
+          _currentSection = AppSection.login;
+        }
       });
     }
   }
 
   void _handleAuthenticated(AuthUser user) {
+    final targetSection = _intendedSection ?? AppSection.profile;
+    _educationService.bindUser(user);
     setState(() {
       _authUser = user;
       _authStatusError = null;
       _authStatusLoading = false;
+      _intendedSection = null;
+      _authRedirectNotice = null;
     });
-    _openSection(AppSection.profile);
+    _openSection(targetSection);
   }
 
   Future<void> _handleLogout() async {
     await _authService.logout();
+    _educationService.clearSession();
     if (!mounted) return;
     setState(() {
       _authUser = null;
       _authStatusError = null;
       _authStatusLoading = false;
+      _intendedSection = null;
+      _authRedirectNotice = null;
+      if (_currentSection == AppSection.education) {
+        _currentSection = AppSection.login;
+      }
     });
   }
 
   void _openSection(AppSection section) {
     Navigator.of(context).maybePop();
+    if (section == AppSection.education &&
+        !_authStatusLoading &&
+        _authUser == null) {
+      setState(() {
+        _intendedSection = AppSection.education;
+        _authRedirectNotice =
+            'Edukasi Bencana hanya dapat diakses setelah login. Setelah masuk, Anda akan langsung diarahkan ke halaman Edukasi Bencana.';
+        _currentSection = AppSection.login;
+      });
+      return;
+    }
+
     setState(() {
+      if (section != AppSection.login && section != AppSection.registration) {
+        _authRedirectNotice = null;
+        if (section != AppSection.education) {
+          _intendedSection = null;
+        }
+      }
       _currentSection = section;
     });
   }
@@ -142,7 +221,20 @@ class _SiagaShellState extends State<SiagaShell> {
       onOpenEducation: () => _openSection(AppSection.education),
     ),
     AppSection.news => NewsPage(onOpenSection: _openSection),
-    AppSection.education => EducationPage(onNavigate: _openSection),
+    AppSection.education => EducationPage(
+      onNavigate: _openSection,
+      service: _educationService,
+      user: _authUser,
+      isAuthLoading: _authStatusLoading,
+      onRequireLogin: () {
+        setState(() {
+          _intendedSection = AppSection.education;
+          _authRedirectNotice =
+              'Edukasi Bencana hanya dapat diakses setelah login. Setelah masuk, Anda akan langsung diarahkan ke halaman Edukasi Bencana.';
+          _currentSection = AppSection.login;
+        });
+      },
+    ),
     AppSection.mitigation => const MitigationPage(),
     AppSection.reports => ReportsPage(
       authService: _authService,
@@ -154,12 +246,14 @@ class _SiagaShellState extends State<SiagaShell> {
       onOpenSection: _openSection,
       authService: _authService,
       onAuthenticated: _handleAuthenticated,
+      noticeMessage: _authRedirectNotice,
     ),
     AppSection.registration => AuthPage(
       isRegistration: true,
       onOpenSection: _openSection,
       authService: _authService,
       onAuthenticated: _handleAuthenticated,
+      noticeMessage: _authRedirectNotice,
     ),
     AppSection.profile => ProfilePage(
       onOpenSection: _openSection,
@@ -168,6 +262,7 @@ class _SiagaShellState extends State<SiagaShell> {
       statusError: _authStatusError,
       onRetryStatus: () => unawaited(_refreshAuthStatus()),
       onLogout: _handleLogout,
+      educationService: _educationService,
     ),
   };
 

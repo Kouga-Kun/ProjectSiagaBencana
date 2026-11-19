@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Quiz extends Model
 {
+    use SoftDeletes;
+
     public const STATUS_PUBLISHED = 'published';
 
     public const STATUS_DRAFT = 'draft';
@@ -69,7 +72,7 @@ class Quiz extends Model
         $counter = 2;
 
         while (
-            static::query()
+            static::withTrashed()
                 ->where('slug', $slug)
                 ->when($ignoreId !== null, fn ($query) => $query->where('id', '!=', $ignoreId))
                 ->exists()

@@ -112,24 +112,81 @@
     @endif
 
     <div class="adm-tabs">
+        <a href="{{ route('petugas.edukasi.index', ['tab' => 'analitik']) }}" class="adm-tab {{ $activeTab === 'analitik' || $activeTab === 'progres' ? 'active' : '' }}">
+            📊 Dashboard Analitik
+        </a>
         <a href="{{ route('petugas.edukasi.index', ['tab' => 'materi']) }}" class="adm-tab {{ $activeTab === 'materi' ? 'active' : '' }}">
-            📚 1. Kelola Materi ({{ $materials->count() }})
+            📚 Materi ({{ $materials->count() }})
         </a>
         <a href="{{ route('petugas.edukasi.index', ['tab' => 'simulasi']) }}" class="adm-tab {{ $activeTab === 'simulasi' ? 'active' : '' }}">
-            🎮 2. Kelola Simulasi ({{ $simulations->count() }})
+            🎮 Simulasi ({{ $simulations->count() }})
         </a>
         <a href="{{ route('petugas.edukasi.index', ['tab' => 'kuis']) }}" class="adm-tab {{ $activeTab === 'kuis' ? 'active' : '' }}">
-            📝 3. Kelola Kuis ({{ $quizzes->count() }})
+            📝 Kuis ({{ $quizzes->count() }})
         </a>
         <a href="{{ route('petugas.edukasi.index', ['tab' => 'misi']) }}" class="adm-tab {{ $activeTab === 'misi' ? 'active' : '' }}">
-            🎯 4. Kelola Misi Siaga ({{ $missions->count() }})
+            🎯 Misi Siaga ({{ $missions->count() }})
         </a>
-        <a href="{{ route('petugas.edukasi.index', ['tab' => 'progres']) }}" class="adm-tab {{ $activeTab === 'progres' ? 'active' : '' }}">
-            📊 5. Pantau Progres Pengguna
+        <a href="{{ route('petugas.edukasi.index', ['tab' => 'badge']) }}" class="adm-tab {{ $activeTab === 'badge' ? 'active' : '' }}">
+            🏅 Badge ({{ $badges->count() }})
         </a>
     </div>
 
-    @if ($activeTab === 'materi')
+    @if ($activeTab === 'badge')
+        <div class="adm-grid">
+            <div class="adm-card">
+                <h2 style="margin:0 0 14px 0;font-size:1.15rem;">
+                    {{ $editingBadge ? 'Edit Aturan & Reward Badge' : 'Pilih Badge untuk Diedit' }}
+                </h2>
+                @if ($editingBadge)
+                    <form method="POST" action="{{ route('petugas.edukasi.badge.update', $editingBadge) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="adm-field">
+                            <label>Kode Badge</label>
+                            <input type="text" value="{{ $editingBadge->code }}" class="adm-input" disabled>
+                        </div>
+                        <div class="adm-field">
+                            <label>Nama Badge</label>
+                            <input type="text" name="name" value="{{ old('name', $editingBadge->name) }}" class="adm-input" required>
+                        </div>
+                        <div class="adm-field">
+                            <label>Deskripsi</label>
+                            <textarea name="description" rows="2" class="adm-textarea" required>{{ old('description', $editingBadge->description) }}</textarea>
+                        </div>
+                        <div class="adm-field">
+                            <label>Syarat Perolehan (Tampilan Pengguna)</label>
+                            <input type="text" name="criteria_description" value="{{ old('criteria_description', $editingBadge->criteria_description) }}" class="adm-input" required>
+                        </div>
+                        <div class="adm-field">
+                            <label>Bonus Poin Reward</label>
+                            <input type="number" name="points_reward" value="{{ old('points_reward', $editingBadge->points_reward) }}" min="0" max="1000" class="adm-input" required>
+                        </div>
+                        <button type="submit" class="adm-btn" style="background:#1e3a8a;color:#ffffff;">Simpan Perubahan Badge</button>
+                    </form>
+                @else
+                    <p style="color:#64748b;font-size:14px;">Klik tombol <strong>Edit</strong> pada salah satu badge di sebelah kanan untuk memperbarui nama, deskripsi, syarat perolehan, atau poin reward.</p>
+                @endif
+            </div>
+            <div class="adm-card">
+                <h2 style="margin:0 0 14px 0;font-size:1.15rem;">Daftar Badge Kesiapsiagaan ({{ $badges->count() }})</h2>
+                <div style="display:grid;gap:10px;">
+                    @foreach ($badges as $b)
+                        <div style="border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                            <div>
+                                <div style="font-size:12px;color:#64748b;font-weight:700;">
+                                    {{ $b->code }} · +{{ $b->points_reward }} Poin · Diraih oleh {{ $b->awarded_users_count }} pengguna
+                                </div>
+                                <div style="font-weight:800;">🏅 {{ $b->name }}</div>
+                                <div style="font-size:13px;color:#475569;">{{ $b->criteria_description }}</div>
+                            </div>
+                            <a href="{{ route('petugas.edukasi.index', ['tab' => 'badge', 'edit_badge' => $b->id]) }}" class="adm-btn" style="background:#e2e8f0;color:#1e293b;">Edit</a>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @elseif ($activeTab === 'materi')
         <div class="adm-grid">
             <div class="adm-card">
                 <h2 style="margin:0 0 14px 0;font-size:1.15rem;">
@@ -523,30 +580,126 @@
             </div>
         </div>
     @else
-        <!-- TAB PANTAU PROGRES PENGGUNA -->
+        <!-- TAB DASHBOARD ANALITIK ADMIN -->
+        @php
+            $summary = $progressOverview['summary'] ?? [];
+            $timeline = $progressOverview['activity_timeline_14d'] ?? [];
+            $maxDayCount = max(1, collect($timeline)->max('count') ?? 1);
+            $quizDist = $progressOverview['quiz_score_distribution'] ?? [];
+            $maxBucket = max(1, collect($quizDist)->max('count') ?? 1);
+        @endphp
+
         <div class="adm-card" style="margin-bottom:20px;">
-            <h2 style="margin:0 0 14px 0;font-size:1.15rem;">Ringkasan Aktivitas Edukasi Masyarakat</h2>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;">
+            <h2 style="margin:0 0 14px 0;font-size:1.2rem;">📊 Dashboard Analitik Edukasi Bencana</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;">
                 <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
-                    <div style="font-size:12px;color:#64748b;">Total Pengguna Terdaftar</div>
-                    <div style="font-size:1.5rem;font-weight:800;color:#1e3a8a;">{{ $progressOverview['summary']['total_users'] ?? 0 }}</div>
+                    <div style="font-size:12px;color:#64748b;">Pengguna Edukasi / Total Akun</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#1e3a8a;">{{ $summary['total_education_users'] ?? 0 }} / {{ $summary['total_users'] ?? 0 }}</div>
                 </div>
                 <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
-                    <div style="font-size:12px;color:#64748b;">Materi Telah Diselesaikan</div>
-                    <div style="font-size:1.5rem;font-weight:800;color:#059669;">{{ $progressOverview['summary']['total_material_completions'] ?? 0 }}</div>
+                    <div style="font-size:12px;color:#64748b;">Pengguna Aktif (7 / 30 Hari)</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#059669;">{{ $summary['active_users_7d'] ?? 0 }} / {{ $summary['active_users_30d'] ?? 0 }}</div>
                 </div>
                 <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
-                    <div style="font-size:12px;color:#64748b;">Simulasi Dikerjakan</div>
-                    <div style="font-size:1.5rem;font-weight:800;color:#d97706;">{{ $progressOverview['summary']['total_simulation_attempts'] ?? 0 }}</div>
+                    <div style="font-size:12px;color:#64748b;">Materi Selesai</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#1e3a8a;">{{ $summary['total_material_completions'] ?? 0 }}</div>
                 </div>
                 <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
                     <div style="font-size:12px;color:#64748b;">Rata-rata Nilai Kuis</div>
-                    <div style="font-size:1.5rem;font-weight:800;color:#1e3a8a;">{{ $progressOverview['summary']['average_quiz_score'] ?? 0 }}</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#d97706;">{{ $summary['average_quiz_score'] ?? 0 }}</div>
                 </div>
                 <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
-                    <div style="font-size:12px;color:#64748b;">Misi Siaga Selesai</div>
-                    <div style="font-size:1.5rem;font-weight:800;color:#059669;">{{ $progressOverview['summary']['total_completed_missions'] ?? 0 }}</div>
+                    <div style="font-size:12px;color:#64748b;">Penyelesaian Simulasi</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#0369a1;">{{ $summary['simulation_completion_rate'] ?? 0 }}%</div>
+                    <div style="font-size:11.5px;color:#64748b;">{{ $summary['total_simulation_attempts'] ?? 0 }} percobaan</div>
                 </div>
+                <div style="background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;">
+                    <div style="font-size:12px;color:#64748b;">Penyelesaian Misi Siaga</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#059669;">{{ $summary['mission_completion_rate'] ?? 0 }}%</div>
+                    <div style="font-size:11.5px;color:#64748b;">{{ $summary['total_completed_missions'] ?? 0 }} selesai</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="adm-grid" style="margin-bottom:20px;">
+            <!-- Tren Aktivitas 14 Hari -->
+            <div class="adm-card">
+                <h3 style="margin:0 0 12px 0;font-size:1.05rem;">Tren Aktivitas Belajar (14 Hari Terakhir)</h3>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px;border-bottom:1px solid #cbd5e1;">
+                    @foreach ($timeline as $point)
+                        @php $barH = max(6, (int) round(($point['count'] / $maxDayCount) * 120)); @endphp
+                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            <span style="font-size:10px;font-weight:700;color:#1e3a8a;">{{ $point['count'] }}</span>
+                            <div style="width:100%;max-width:24px;height:{{ $barH }}px;background:#1e3a8a;border-radius:6px 6px 0 0;"></div>
+                            <span style="font-size:10px;color:#64748b;">{{ $point['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Distribusi Hasil Kuis -->
+            <div class="adm-card">
+                <h3 style="margin:0 0 12px 0;font-size:1.05rem;">Distribusi Nilai Kuis ({{ $summary['total_quiz_attempts'] ?? 0 }} Percobaan)</h3>
+                <div style="display:grid;gap:10px;">
+                    @foreach ($quizDist as $bucket)
+                        @php $wPct = (int) round(($bucket['count'] / $maxBucket) * 100); @endphp
+                        <div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
+                                <span>{{ $bucket['label'] }}</span>
+                                <strong>{{ $bucket['count'] }} percobaan</strong>
+                            </div>
+                            <div style="height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                                <div style="height:100%;width:{{ $wPct }}%;background:#059669;border-radius:999px;"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="adm-grid" style="margin-bottom:20px;">
+            <div class="adm-card">
+                <h3 style="margin:0 0 10px 0;font-size:1.05rem;">🔥 Materi Paling Populer</h3>
+                @forelse ($progressOverview['popular_materials'] ?? [] as $pm)
+                    <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13.5px;">
+                        <span><strong>{{ $pm['title'] }}</strong> <span style="color:#64748b;">({{ $pm['category'] }})</span></span>
+                        <span style="color:#059669;font-weight:700;">{{ $pm['completed_count'] }} selesai</span>
+                    </div>
+                @empty
+                    <p style="color:#64748b;font-size:13px;">Belum ada data.</p>
+                @endforelse
+
+                <h3 style="margin:18px 0 10px 0;font-size:1.05rem;">📉 Materi Paling Jarang Dipelajari</h3>
+                @forelse ($progressOverview['least_studied_materials'] ?? [] as $lm)
+                    <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13.5px;">
+                        <span>{{ $lm['title'] }} <span style="color:#64748b;">({{ $lm['category'] }})</span></span>
+                        <span style="color:#d97706;font-weight:700;">{{ $lm['completed_count'] }} selesai</span>
+                    </div>
+                @empty
+                    <p style="color:#64748b;font-size:13px;">Belum ada data.</p>
+                @endforelse
+            </div>
+
+            <div class="adm-card">
+                <h3 style="margin:0 0 10px 0;font-size:1.05rem;">🎮 Simulasi Paling Sering Dimainkan</h3>
+                @forelse ($progressOverview['popular_simulations'] ?? [] as $ps)
+                    <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13.5px;">
+                        <span><strong>{{ $ps['title'] }}</strong></span>
+                        <span style="color:#1e3a8a;font-weight:700;">{{ $ps['attempts_count'] }}x · Rata² {{ $ps['average_score'] }}</span>
+                    </div>
+                @empty
+                    <p style="color:#64748b;font-size:13px;">Belum ada data simulasi.</p>
+                @endforelse
+
+                <h3 style="margin:18px 0 10px 0;font-size:1.05rem;">⏸️ Materi Sering Ditinggalkan (Belum Selesai)</h3>
+                @forelse ($progressOverview['abandoned_materials'] ?? [] as $am)
+                    <div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13.5px;">
+                        <span>{{ $am['title'] }}</span>
+                        <span style="color:#dc2626;font-weight:700;">{{ $am['abandoned_count'] }} belum tuntas</span>
+                    </div>
+                @empty
+                    <p style="color:#64748b;font-size:13px;">Belum ada materi yang ditinggalkan di tengah jalan.</p>
+                @endforelse
             </div>
         </div>
 

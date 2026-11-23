@@ -48,27 +48,18 @@ class _AuthPageState extends State<AuthPage> {
 
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
-
-    if (email.isEmpty) {
-      return 'Email wajib diisi.';
-    }
-
+    if (email.isEmpty) return 'Email wajib diisi.';
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       return 'Masukkan alamat email yang valid.';
     }
-
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Kata sandi wajib diisi.';
-    }
-
+    if (value == null || value.isEmpty) return 'Kata sandi wajib diisi.';
     if (widget.isRegistration && value.length < 8) {
       return 'Kata sandi minimal 8 karakter.';
     }
-
     return null;
   }
 
@@ -108,116 +99,91 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  InputDecoration _inputDecoration({
-    required String label,
-    required IconData icon,
-    Widget? suffixIcon,
-  }) {
-    final outline = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: SiagaColors.border),
-    );
-
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: SiagaColors.muted, size: 20),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: const Color(0xFFFCFDFE),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      border: outline,
-      enabledBorder: outline,
-      focusedBorder: outline.copyWith(
-        borderSide: const BorderSide(color: SiagaColors.navyHover, width: 1.5),
-      ),
-      errorBorder: outline.copyWith(
-        borderSide: const BorderSide(color: SiagaColors.danger),
-      ),
-      focusedErrorBorder: outline.copyWith(
-        borderSide: const BorderSide(color: SiagaColors.danger, width: 1.5),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isRegistration = widget.isRegistration;
-    final horizontalPadding = MediaQuery.sizeOf(context).width < 600
-        ? 18.0
-        : 30.0;
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
         28,
         horizontalPadding,
-        44,
+        48,
       ),
       children: [
-        SiagaPageHeader(
-          eyebrow: 'AKUN SIAGABENCANA',
-          title: isRegistration ? 'Daftar akun warga' : 'Masuk ke akun',
-          description: isRegistration
-              ? 'Buat akun untuk menggunakan fitur SiagaBencana.'
-              : 'Masuk untuk membuka profil, fitur pelaporan, dan Edukasi Bencana.',
-          icon: isRegistration
-              ? Icons.person_add_alt_1_rounded
-              : Icons.login_rounded,
-        ),
-        if (widget.noticeMessage != null &&
-            widget.noticeMessage!.trim().isNotEmpty) ...[
-          const SizedBox(height: 16),
-          SiagaNotice(
-            title: 'Login Diperlukan',
-            message: widget.noticeMessage!,
-            tone: SiagaTone.warning,
-            icon: Icons.lock_outline_rounded,
-          ),
-        ],
-        const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final form = _AuthFormCard(
-              isRegistration: isRegistration,
-              onOpenSection: widget.onOpenSection,
-              formKey: _formKey,
-              nameController: _nameController,
-              emailController: _emailController,
-              passwordController: _passwordController,
-              confirmationController: _confirmationController,
-              passwordIsVisible: _passwordIsVisible,
-              confirmationIsVisible: _confirmationIsVisible,
-              submissionError: _submissionError,
-              isSubmitting: _isSubmitting,
-              inputDecoration: _inputDecoration,
-              validateEmail: _validateEmail,
-              validatePassword: _validatePassword,
-              onTogglePassword: () {
-                setState(() {
-                  _passwordIsVisible = !_passwordIsVisible;
-                });
-              },
-              onToggleConfirmation: () {
-                setState(() {
-                  _confirmationIsVisible = !_confirmationIsVisible;
-                });
-              },
-              onSubmit: _submit,
-            );
-
-            if (constraints.maxWidth < 850) {
-              return form;
-            }
-
-            return Row(
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(child: _AuthSidePanel()),
-                const SizedBox(width: 22),
-                Expanded(flex: 5, child: form),
+                SiagaPageHeader(
+                  eyebrow: 'AKUN SIAGABENCANA',
+                  title: isRegistration ? 'Daftar akun warga' : 'Masuk ke akun',
+                  description: isRegistration
+                      ? 'Buat akun untuk mengakses pelaporan bencana, Edukasi Bencana, dan layanan darurat SOS.'
+                      : 'Masuk untuk membuka profil, fitur pelaporan, layanan SOS, dan Edukasi Bencana.',
+                  icon: isRegistration
+                      ? Icons.person_add_alt_1_outlined
+                      : Icons.login_rounded,
+                ),
+                if (widget.noticeMessage != null &&
+                    widget.noticeMessage!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SiagaNotice(
+                    title: 'Login Diperlukan',
+                    message: widget.noticeMessage!,
+                    tone: SiagaTone.warning,
+                    icon: Icons.lock_outline_rounded,
+                  ),
+                ],
+                const SizedBox(height: 22),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final form = _AuthFormCard(
+                      isRegistration: isRegistration,
+                      onOpenSection: widget.onOpenSection,
+                      formKey: _formKey,
+                      nameController: _nameController,
+                      emailController: _emailController,
+                      passwordController: _passwordController,
+                      confirmationController: _confirmationController,
+                      passwordIsVisible: _passwordIsVisible,
+                      confirmationIsVisible: _confirmationIsVisible,
+                      submissionError: _submissionError,
+                      isSubmitting: _isSubmitting,
+                      validateEmail: _validateEmail,
+                      validatePassword: _validatePassword,
+                      onTogglePassword: () => setState(
+                        () => _passwordIsVisible = !_passwordIsVisible,
+                      ),
+                      onToggleConfirmation: () => setState(
+                        () => _confirmationIsVisible = !_confirmationIsVisible,
+                      ),
+                      onSubmit: _submit,
+                    );
+
+                    if (constraints.maxWidth < 780) {
+                      return form;
+                    }
+
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Expanded(flex: 4, child: _AuthSidePanel()),
+                          const SizedBox(width: 20),
+                          Expanded(flex: 6, child: form),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
-            );
-          },
+            ),
+          ),
         ),
       ],
     );
@@ -237,7 +203,6 @@ class _AuthFormCard extends StatelessWidget {
     required this.confirmationIsVisible,
     required this.submissionError,
     required this.isSubmitting,
-    required this.inputDecoration,
     required this.validateEmail,
     required this.validatePassword,
     required this.onTogglePassword,
@@ -256,12 +221,6 @@ class _AuthFormCard extends StatelessWidget {
   final bool confirmationIsVisible;
   final String? submissionError;
   final bool isSubmitting;
-  final InputDecoration Function({
-    required String label,
-    required IconData icon,
-    Widget? suffixIcon,
-  })
-  inputDecoration;
   final String? Function(String?) validateEmail;
   final String? Function(String?) validatePassword;
   final VoidCallback onTogglePassword;
@@ -278,36 +237,35 @@ class _AuthFormCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              isRegistration ? 'Informasi akun' : 'Selamat datang kembali',
+              isRegistration ? 'Informasi akun baru' : 'Selamat datang kembali',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 5),
             Text(
               isRegistration
-                  ? 'Lengkapi data berikut untuk membuat akun.'
-                  : 'Masukkan email dan kata sandi untuk masuk.',
+                  ? 'Lengkapi data berikut untuk mendaftar sebagai pengguna SiagaBencana.'
+                  : 'Masukkan email dan kata sandi akun SiagaBencana Anda.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (isRegistration) ...[
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: nameController,
                 textInputAction: TextInputAction.next,
                 textCapitalization: TextCapitalization.words,
                 maxLength: 255,
-                decoration: inputDecoration(
-                  label: 'Nama lengkap',
-                  icon: Icons.person_outline_rounded,
-                ).copyWith(counterText: ''),
+                decoration: const InputDecoration(
+                  labelText: 'Nama lengkap',
+                  prefixIcon: Icon(Icons.person_outline_rounded, size: 19),
+                  counterText: '',
+                ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Nama lengkap wajib diisi.';
                   }
-
                   if (value.trim().length > 255) {
                     return 'Nama maksimal 255 karakter.';
                   }
-
                   return null;
                 },
               ),
@@ -318,9 +276,9 @@ class _AuthFormCard extends StatelessWidget {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
-              decoration: inputDecoration(
-                label: 'Email',
-                icon: Icons.alternate_email_rounded,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.alternate_email_rounded, size: 19),
               ),
               validator: validateEmail,
             ),
@@ -331,16 +289,17 @@ class _AuthFormCard extends StatelessWidget {
               textInputAction: isRegistration
                   ? TextInputAction.next
                   : TextInputAction.done,
+              onFieldSubmitted: isRegistration ? null : (_) => onSubmit(),
               autofillHints: [
                 isRegistration
                     ? AutofillHints.newPassword
                     : AutofillHints.password,
               ],
-              decoration: inputDecoration(
-                label: isRegistration
+              decoration: InputDecoration(
+                labelText: isRegistration
                     ? 'Kata sandi (minimal 8 karakter)'
                     : 'Kata sandi',
-                icon: Icons.lock_outline_rounded,
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 19),
                 suffixIcon: IconButton(
                   tooltip: passwordIsVisible
                       ? 'Sembunyikan kata sandi'
@@ -350,6 +309,7 @@ class _AuthFormCard extends StatelessWidget {
                     passwordIsVisible
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
+                    size: 19,
                   ),
                 ),
               ),
@@ -361,9 +321,10 @@ class _AuthFormCard extends StatelessWidget {
                 controller: confirmationController,
                 obscureText: !confirmationIsVisible,
                 textInputAction: TextInputAction.done,
-                decoration: inputDecoration(
-                  label: 'Konfirmasi kata sandi',
-                  icon: Icons.lock_reset_outlined,
+                onFieldSubmitted: (_) => onSubmit(),
+                decoration: InputDecoration(
+                  labelText: 'Konfirmasi kata sandi',
+                  prefixIcon: const Icon(Icons.lock_reset_outlined, size: 19),
                   suffixIcon: IconButton(
                     tooltip: confirmationIsVisible
                         ? 'Sembunyikan kata sandi'
@@ -373,6 +334,7 @@ class _AuthFormCard extends StatelessWidget {
                       confirmationIsVisible
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
+                      size: 19,
                     ),
                   ),
                 ),
@@ -380,38 +342,40 @@ class _AuthFormCard extends StatelessWidget {
                   if (value == null || value.isEmpty) {
                     return 'Konfirmasi kata sandi wajib diisi.';
                   }
-
                   if (value != passwordController.text) {
                     return 'Konfirmasi kata sandi tidak cocok.';
                   }
-
                   return null;
                 },
               ),
             ],
             if (submissionError != null) ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               SiagaNotice(
                 title: 'Belum dapat melanjutkan',
                 message: submissionError!,
-                tone: SiagaTone.info,
-                icon: Icons.info_outline_rounded,
+                tone: SiagaTone.danger,
+                icon: Icons.error_outline_rounded,
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             SizedBox(
-              height: 50,
+              height: 46,
               child: FilledButton.icon(
                 onPressed: isSubmitting ? null : onSubmit,
                 icon: isSubmitting
                     ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        dimension: 17,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Icon(
                         isRegistration
                             ? Icons.person_add_alt_1_rounded
                             : Icons.login_rounded,
+                        size: 18,
                       ),
                 label: Text(
                   isSubmitting
@@ -422,7 +386,7 @@ class _AuthFormCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Center(
               child: TextButton(
                 onPressed: () => onOpenSection(
@@ -448,50 +412,70 @@ class _AuthSidePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 330),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         color: SiagaColors.navy,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(SiagaRadius.lg),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SiagaIconTile(
-            icon: Icons.shield_rounded,
-            color: Colors.white,
-            backgroundColor: Color(0x24FFFFFF),
-            size: 58,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(SiagaRadius.md),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.shield_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Satu akun terpadu untuk kesiapsiagaan bencana',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                  height: 1.28,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Akses penuh ke modul Edukasi Bencana, pelaporan kejadian warga, dan sinyal darurat SOS dengan data tersinkronisasi per akun.',
+                style: TextStyle(
+                  color: Color(0xFFCBD5E1),
+                  fontSize: 13.5,
+                  height: 1.6,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 22),
-          Text(
-            'Satu akun untuk layanan SiagaBencana',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              height: 1.25,
-            ),
-          ),
-          SizedBox(height: 11),
-          Text(
-            'Akun warga pada website lama digunakan untuk membuka profil dan mengirim laporan. Akses petugas dibatasi untuk proses verifikasi.',
-            style: TextStyle(
-              color: Color(0xFFE0E7FF),
-              fontSize: 14,
-              height: 1.6,
-            ),
-          ),
-          SizedBox(height: 22),
-          SiagaBullet(
-            text: 'Data akun diperiksa dengan aman.',
-            icon: Icons.check_circle_outline_rounded,
-            color: Color(0xFF86EFAC),
-          ),
-          SiagaBullet(
-            text: 'Hak akses akun ditentukan oleh sistem',
-            icon: Icons.verified_user_outlined,
-            color: Color(0xFFBFDBFE),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 22),
+              SiagaBullet(
+                text: 'Progres belajar dan nilai kuis tersimpan per akun.',
+                icon: Icons.check_circle_outline_rounded,
+                color: Color(0xFF34D399),
+                textColor: Color(0xFFE2E8F0),
+              ),
+              SiagaBullet(
+                text: 'Autentikasi sesi terlindungi CSRF dan hak akses peran.',
+                icon: Icons.verified_user_outlined,
+                color: Color(0xFF93C5FD),
+                textColor: Color(0xFFE2E8F0),
+              ),
+            ],
           ),
         ],
       ),

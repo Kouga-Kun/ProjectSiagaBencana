@@ -7,12 +7,16 @@ import '../../features/auth/presentation/auth_page.dart';
 import '../../features/education/data/education_data_service.dart';
 import '../../features/education/presentation/education_page.dart';
 import '../../features/evacuation/presentation/evacuation_page.dart';
-import '../../features/home/presentation/home_page.dart';
 import '../../features/home/data/home_data_service.dart';
+import '../../features/home/presentation/home_page.dart';
 import '../../features/mitigation/presentation/mitigation_page.dart';
+import '../../features/news/data/news_data_service.dart';
 import '../../features/news/presentation/news_page.dart';
+import '../../features/profile/presentation/profile_info_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/reports/presentation/reports_page.dart';
+import '../../features/sos/data/sos_data_service.dart';
+import '../../features/sos/presentation/sos_page.dart';
 import '../network/api_config.dart';
 import '../siaga_theme.dart';
 import 'app_section.dart';
@@ -22,18 +26,24 @@ class SiagaShell extends StatefulWidget {
     this.homeDataService,
     this.authSessionService,
     this.educationDataService,
+    this.newsDataService,
+    this.sosDataService,
     super.key,
   });
 
   final HomeDataService? homeDataService;
   final AuthSessionService? authSessionService;
   final EducationDataService? educationDataService;
+  final NewsDataService? newsDataService;
+  final SosDataService? sosDataService;
 
   @override
   State<SiagaShell> createState() => _SiagaShellState();
 }
 
 class _SiagaShellState extends State<SiagaShell> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   AppSection _currentSection = AppSection.home;
   AppSection? _intendedSection;
   String? _authRedirectNotice;
@@ -135,6 +145,13 @@ class _SiagaShellState extends State<SiagaShell> {
     _openSection(targetSection);
   }
 
+  void _handleUserUpdated(AuthUser user) {
+    if (!mounted) return;
+    setState(() {
+      _authUser = user;
+    });
+  }
+
   Future<void> _handleLogout() async {
     await _authService.logout();
     _educationService.clearSession();
@@ -145,14 +162,20 @@ class _SiagaShellState extends State<SiagaShell> {
       _authStatusLoading = false;
       _intendedSection = null;
       _authRedirectNotice = null;
-      if (_currentSection == AppSection.education) {
+      if (_currentSection == AppSection.education ||
+          _currentSection == AppSection.profileInfo) {
         _currentSection = AppSection.login;
       }
     });
   }
 
   void _openSection(AppSection section) {
-    Navigator.of(context).maybePop();
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).maybePop();
+    }
+
     if (section == AppSection.education &&
         !_authStatusLoading &&
         _authUser == null) {
@@ -181,23 +204,35 @@ class _SiagaShellState extends State<SiagaShell> {
       context: context,
       showDragHandle: true,
       backgroundColor: SiagaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(SiagaRadius.xl),
+        ),
+      ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                  child: Text(
+                    'LAYANAN LAINNYA',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
                 for (final section in const [
-                  AppSection.education,
-                  AppSection.mitigation,
                   AppSection.reports,
+                  AppSection.mitigation,
+                  AppSection.sos,
                   AppSection.profile,
                 ])
-                  ListTile(
-                    leading: Icon(section.icon, color: SiagaColors.navy),
-                    title: Text(section.title),
-                    trailing: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  _MoreSheetTile(
+                    section: section,
+                    isSelected: _currentSection == section,
                     onTap: () {
                       Navigator.of(context).pop();
                       _openSection(section);
@@ -215,12 +250,16 @@ class _SiagaShellState extends State<SiagaShell> {
     AppSection.home => HomePage(
       onOpenSection: _openSection,
       dataService: widget.homeDataService,
+      newsDataService: widget.newsDataService,
     ),
     AppSection.evacuation => EvacuationPage(
       onOpenMitigation: () => _openSection(AppSection.mitigation),
       onOpenEducation: () => _openSection(AppSection.education),
     ),
-    AppSection.news => NewsPage(onOpenSection: _openSection),
+    AppSection.news => NewsPage(
+      onOpenSection: _openSection,
+      dataService: widget.newsDataService,
+    ),
     AppSection.education => EducationPage(
       onNavigate: _openSection,
       service: _educationService,
@@ -240,6 +279,14 @@ class _SiagaShellState extends State<SiagaShell> {
       authService: _authService,
       user: _authUser,
       isAuthLoading: _authStatusLoading,
+      onOpenLogin: () => _openSection(AppSection.login),
+    ),
+    AppSection.sos => SosPage(
+      user: _authUser,
+      authService: _authService,
+      sosDataService: widget.sosDataService,
+      onBack: () => _openSection(AppSection.profile),
+      onOpenSection: _openSection,
     ),
     AppSection.login => AuthPage(
       isRegistration: false,
@@ -264,13 +311,20 @@ class _SiagaShellState extends State<SiagaShell> {
       onLogout: _handleLogout,
       educationService: _educationService,
     ),
+    AppSection.profileInfo => ProfileInfoPage(
+      user: _authUser,
+      authService: _authService,
+      onUserUpdated: _handleUserUpdated,
+      onBack: () => _openSection(AppSection.profile),
+      onOpenSection: _openSection,
+    ),
   };
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 1100;
+        final isCompact = constraints.maxWidth < SiagaBreakpoints.desktop;
         final isMainMobileSection = mobileNavigationSections.contains(
           _currentSection,
         );
@@ -278,53 +332,117 @@ class _SiagaShellState extends State<SiagaShell> {
             ? mobileNavigationSections.indexOf(_currentSection)
             : mobileNavigationSections.length;
 
+        if (isCompact) {
+          return Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: SiagaColors.background,
+            drawer: Drawer(
+              width: 280,
+              backgroundColor: SiagaColors.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: const RoundedRectangleBorder(),
+              child: SafeArea(
+                child: _SidebarContent(
+                  currentSection: _currentSection,
+                  user: _authUser,
+                  onOpenSection: _openSection,
+                ),
+              ),
+            ),
+            appBar: AppBar(
+              backgroundColor: SiagaColors.surface,
+              foregroundColor: SiagaColors.ink,
+              titleSpacing: 6,
+              leading: IconButton(
+                tooltip: 'Buka menu navigasi',
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                icon: const Icon(Icons.menu_rounded),
+              ),
+              title: const _Brand(compact: true),
+              actions: [
+                IconButton(
+                  tooltip: 'Bantuan Darurat SOS',
+                  onPressed: () => _openSection(AppSection.sos),
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: SiagaColors.dangerSoft,
+                      borderRadius: BorderRadius.circular(SiagaRadius.md),
+                      border: Border.all(color: SiagaColors.dangerBorder),
+                    ),
+                    child: const Icon(
+                      Icons.sos_rounded,
+                      color: SiagaColors.danger,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Buka profil',
+                  onPressed: () => _openSection(AppSection.profile),
+                  icon: _UserMiniAvatar(user: _authUser, size: 30),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ),
+            bottomNavigationBar: DecoratedBox(
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: SiagaColors.border)),
+              ),
+              child: NavigationBar(
+                selectedIndex: selectedNavigationIndex,
+                onDestinationSelected: (index) {
+                  if (index < mobileNavigationSections.length) {
+                    _openSection(mobileNavigationSections[index]);
+                  } else {
+                    _openMoreMenu();
+                  }
+                },
+                destinations: [
+                  for (final section in mobileNavigationSections)
+                    NavigationDestination(
+                      icon: Icon(section.icon),
+                      selectedIcon: Icon(section.activeIcon),
+                      label: section.shortLabel,
+                    ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.more_horiz_rounded),
+                    label: 'Lainnya',
+                  ),
+                ],
+              ),
+            ),
+            body: _PageFrame(
+              section: _currentSection,
+              child: _buildCurrentPage(),
+            ),
+          );
+        }
+
+        // Desktop: Clean Enterprise Sidebar + Top Context Bar + Content Canvas
         return Scaffold(
-          appBar: isCompact
-              ? AppBar(
-                  automaticallyImplyLeading: false,
-                  backgroundColor: SiagaColors.navy,
-                  foregroundColor: Colors.white,
-                  titleSpacing: 20,
-                  title: const _Brand(),
-                  actions: [
-                    IconButton(
-                      tooltip: 'Buka profil',
-                      onPressed: () => _openSection(AppSection.profile),
-                      icon: const Icon(Icons.person_outline_rounded),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                )
-              : null,
-          bottomNavigationBar: isCompact
-              ? NavigationBar(
-                  selectedIndex: selectedNavigationIndex,
-                  onDestinationSelected: (index) {
-                    if (index < mobileNavigationSections.length) {
-                      _openSection(mobileNavigationSections[index]);
-                    } else {
-                      _openMoreMenu();
-                    }
-                  },
-                  destinations: [
-                    for (final section in mobileNavigationSections)
-                      NavigationDestination(
-                        icon: Icon(section.icon),
-                        label: section.title,
-                      ),
-                    const NavigationDestination(
-                      icon: Icon(Icons.more_horiz_rounded),
-                      label: 'Lainnya',
-                    ),
-                  ],
-                )
-              : null,
-          body: isCompact
-              ? _PageFrame(section: _currentSection, child: _buildCurrentPage())
-              : Column(
+          key: _scaffoldKey,
+          backgroundColor: SiagaColors.background,
+          body: Row(
+            children: [
+              Container(
+                width: 252,
+                decoration: const BoxDecoration(
+                  color: SiagaColors.surface,
+                  border: Border(right: BorderSide(color: SiagaColors.border)),
+                ),
+                child: _SidebarContent(
+                  currentSection: _currentSection,
+                  user: _authUser,
+                  onOpenSection: _openSection,
+                ),
+              ),
+              Expanded(
+                child: Column(
                   children: [
-                    _DesktopHeader(
+                    _DesktopContextBar(
                       currentSection: _currentSection,
+                      user: _authUser,
                       onOpenSection: _openSection,
                     ),
                     Expanded(
@@ -336,6 +454,9 @@ class _SiagaShellState extends State<SiagaShell> {
                     const _DesktopFooter(),
                   ],
                 ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -350,12 +471,19 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1440),
+        constraints: const BoxConstraints(
+          maxWidth: SiagaBreakpoints.maxContentWidth,
+        ),
         child: SizedBox.expand(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 170),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
             child: KeyedSubtree(key: ValueKey(section), child: child),
           ),
         ),
@@ -365,60 +493,489 @@ class _PageFrame extends StatelessWidget {
 }
 
 class _Brand extends StatelessWidget {
-  const _Brand();
+  const _Brand({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.shield_rounded, color: Colors.white, size: 28),
-        const SizedBox(width: 9),
-        Text(
-          'SiagaBencana',
-          style: Theme.of(context).textTheme.titleLarge
-              ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+        Container(
+          width: compact ? 32 : 36,
+          height: compact ? 32 : 36,
+          decoration: BoxDecoration(
+            color: SiagaColors.navy,
+            borderRadius: BorderRadius.circular(SiagaRadius.md),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.shield_rounded,
+            color: Colors.white,
+            size: compact ? 18 : 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'SiagaBencana',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: SiagaColors.navy,
+                  fontSize: compact ? 16 : 16.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              if (!compact)
+                const Text(
+                  'Kota Padang',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: SiagaColors.muted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-class _DesktopHeader extends StatelessWidget {
-  const _DesktopHeader({
+class _SidebarContent extends StatelessWidget {
+  const _SidebarContent({
     required this.currentSection,
+    required this.user,
     required this.onOpenSection,
   });
 
   final AppSection currentSection;
+  final AuthUser? user;
   final ValueChanged<AppSection> onOpenSection;
+
+  bool _isSectionActive(AppSection section) {
+    if (section == AppSection.profile &&
+        currentSection == AppSection.profileInfo) {
+      return true;
+    }
+    return currentSection == section;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => onOpenSection(AppSection.home),
+          child: const Padding(
+            padding: EdgeInsets.fromLTRB(20, 18, 20, 16),
+            child: _Brand(),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
+                  child: Text(
+                    'NAVIGASI UTAMA',
+                    style: TextStyle(
+                      color: SiagaColors.textSubtle,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                ),
+                for (final section in desktopPrimaryNavigationSections)
+                  _SidebarNavTile(
+                    section: section,
+                    isSelected: _isSectionActive(section),
+                    showLockCue:
+                        section == AppSection.education && user == null,
+                    onTap: () => onOpenSection(section),
+                  ),
+                const SizedBox(height: 18),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
+                  child: Text(
+                    'DARURAT & AKUN',
+                    style: TextStyle(
+                      color: SiagaColors.textSubtle,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                ),
+                for (final section in desktopSecondaryNavigationSections)
+                  _SidebarNavTile(
+                    section: section,
+                    isSelected: _isSectionActive(section),
+                    isEmergency: section == AppSection.sos,
+                    onTap: () => onOpenSection(section),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: user != null
+              ? _SidebarAccountCard(
+                  user: user!,
+                  onTap: () => onOpenSection(AppSection.profile),
+                )
+              : _SidebarGuestCard(
+                  onLogin: () => onOpenSection(AppSection.login),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SidebarNavTile extends StatefulWidget {
+  const _SidebarNavTile({
+    required this.section,
+    required this.isSelected,
+    required this.onTap,
+    this.isEmergency = false,
+    this.showLockCue = false,
+  });
+
+  final AppSection section;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isEmergency;
+  final bool showLockCue;
+
+  @override
+  State<_SidebarNavTile> createState() => _SidebarNavTileState();
+}
+
+class _SidebarNavTileState extends State<_SidebarNavTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final selectedBg = widget.isEmergency
+        ? SiagaColors.dangerSoft
+        : SiagaColors.primarySoft;
+    final selectedFg = widget.isEmergency
+        ? SiagaColors.dangerText
+        : SiagaColors.navy;
+    final selectedAccent = widget.isEmergency
+        ? SiagaColors.danger
+        : SiagaColors.navy;
+
+    final bgColor = widget.isSelected
+        ? selectedBg
+        : _hovered
+        ? SiagaColors.surfaceSubtle
+        : Colors.transparent;
+
+    final iconColor = widget.isSelected
+        ? selectedAccent
+        : widget.isEmergency
+        ? SiagaColors.danger
+        : _hovered
+        ? SiagaColors.ink
+        : SiagaColors.muted;
+
+    final textColor = widget.isSelected
+        ? selectedFg
+        : _hovered
+        ? SiagaColors.ink
+        : SiagaColors.textSecondary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(SiagaRadius.md),
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 140),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(SiagaRadius.md),
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 140),
+                    width: 3,
+                    height: 18,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: widget.isSelected
+                          ? selectedAccent
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Icon(
+                    widget.isSelected
+                        ? widget.section.activeIcon
+                        : widget.section.icon,
+                    size: 19,
+                    color: iconColor,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      widget.section.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.8,
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                  if (widget.showLockCue)
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 14,
+                      color: SiagaColors.textSubtle,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarAccountCard extends StatelessWidget {
+  const _SidebarAccountCard({required this.user, required this.onTap});
+
+  final AuthUser user;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: SiagaColors.navy,
-      elevation: 2,
+      color: SiagaColors.surfaceSubtle,
+      borderRadius: BorderRadius.circular(SiagaRadius.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(SiagaRadius.md),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SiagaRadius.md),
+            border: Border.all(color: SiagaColors.border),
+          ),
+          child: Row(
+            children: [
+              _UserMiniAvatar(user: user, size: 34),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      user.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: SiagaColors.ink,
+                      ),
+                    ),
+                    Text(
+                      user.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: SiagaColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: SiagaColors.muted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarGuestCard extends StatelessWidget {
+  const _SidebarGuestCard({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: SiagaColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(SiagaRadius.md),
+        border: Border.all(color: SiagaColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Akses Akun Warga',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: SiagaColors.ink,
+            ),
+          ),
+          const SizedBox(height: 3),
+          const Text(
+            'Simpan progres edukasi, kirim laporan, dan akses SOS.',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: SiagaColors.muted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: onLogin,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            child: const Text('Masuk Akun'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopContextBar extends StatelessWidget {
+  const _DesktopContextBar({
+    required this.currentSection,
+    required this.user,
+    required this.onOpenSection,
+  });
+
+  final AppSection currentSection;
+  final AuthUser? user;
+  final ValueChanged<AppSection> onOpenSection;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 60,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: SiagaColors.surface,
+        border: Border(bottom: BorderSide(color: SiagaColors.border)),
+      ),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1440),
+          constraints: const BoxConstraints(
+            maxWidth: SiagaBreakpoints.maxContentWidth,
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Row(
               children: [
-                const _Brand(),
-                const Spacer(),
-                for (final section in desktopNavigationSections)
-                  _DesktopNavigationButton(
-                    section: section,
-                    isSelected: currentSection == section,
-                    onPressed: () => onOpenSection(section),
+                Icon(currentSection.icon, size: 18, color: SiagaColors.muted),
+                const SizedBox(width: 8),
+                Text(
+                  currentSection.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                const SizedBox(width: 9),
-                TextButton.icon(
-                  onPressed: () => onOpenSection(AppSection.profile),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  icon: const Icon(Icons.person_outline_rounded),
-                  label: const Text('Profil'),
+                ),
+                const SizedBox(width: 10),
+                Container(width: 1, height: 14, color: SiagaColors.border),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    currentSection.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: () => onOpenSection(AppSection.sos),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: SiagaColors.danger,
+                    side: const BorderSide(color: SiagaColors.dangerBorder),
+                    backgroundColor: SiagaColors.dangerSoft,
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  icon: const Icon(Icons.sos_rounded, size: 16),
+                  label: const Text('Darurat SOS'),
+                ),
+                const SizedBox(width: 10),
+                Tooltip(
+                  message: 'Buka profil',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(SiagaRadius.pill),
+                    onTap: () => onOpenSection(AppSection.profile),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: _UserMiniAvatar(user: user, size: 32),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -429,49 +986,117 @@ class _DesktopHeader extends StatelessWidget {
   }
 }
 
-class _DesktopNavigationButton extends StatelessWidget {
-  const _DesktopNavigationButton({
+class _UserMiniAvatar extends StatelessWidget {
+  const _UserMiniAvatar({required this.user, required this.size});
+
+  final AuthUser? user;
+  final double size;
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'SB';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl = user?.profilePhotoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          photoUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    if (user == null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: SiagaColors.surfaceMuted,
+          shape: BoxShape.circle,
+          border: Border.all(color: SiagaColors.border),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.person_outline_rounded,
+          size: size * 0.54,
+          color: SiagaColors.muted,
+        ),
+      );
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: SiagaColors.navy,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(user!.name),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: size * 0.36,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreSheetTile extends StatelessWidget {
+  const _MoreSheetTile({
     required this.section,
     required this.isSelected,
-    required this.onPressed,
+    required this.onTap,
   });
 
   final AppSection section;
   final bool isSelected;
-  final VoidCallback onPressed;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 11),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              section.title,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              height: 2,
-              width: 28,
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+    final isSos = section == AppSection.sos;
+    return ListTile(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SiagaRadius.md),
+      ),
+      tileColor: isSelected ? SiagaColors.primarySoft : null,
+      leading: Icon(
+        isSelected ? section.activeIcon : section.icon,
+        color: isSos ? SiagaColors.danger : SiagaColors.navy,
+      ),
+      title: Text(
+        section.title,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+          color: isSos ? SiagaColors.dangerText : SiagaColors.ink,
         ),
       ),
+      subtitle: Text(
+        section.description,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        size: 18,
+        color: SiagaColors.muted,
+      ),
+      onTap: onTap,
     );
   }
 }
@@ -483,12 +1108,40 @@ class _DesktopFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: SiagaColors.ink,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 19),
-      child: const Text(
-        'SiagaBencana · Informasi dan Mitigasi Bencana Kota Padang',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      decoration: const BoxDecoration(
+        color: SiagaColors.surface,
+        border: Border(top: BorderSide(color: SiagaColors.border)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 11),
+      child: const Row(
+        children: [
+          Expanded(
+            child: Text(
+              'SiagaBencana · Layanan Informasi & Mitigasi Bencana Kota Padang',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: SiagaColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              'Sumber data: BMKG · Open-Meteo · BPBD',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: SiagaColors.textSubtle,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

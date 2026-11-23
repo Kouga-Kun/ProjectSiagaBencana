@@ -83,52 +83,47 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
       NewsCategories.earlyWarning => Icons.notifications_active_outlined,
       NewsCategories.education => Icons.menu_book_rounded,
       NewsCategories.regionalInfo => Icons.map_outlined,
-      _ => Icons.newspaper_rounded,
+      _ => Icons.newspaper_outlined,
     };
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = width < 600 ? 18.0 : 30.0;
+    final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
     final categoryTone = _toneForCategory(_article.category);
     final categoryIcon = _iconForCategory(_article.category);
 
     return Scaffold(
       backgroundColor: SiagaColors.background,
       appBar: AppBar(
-        backgroundColor: SiagaColors.navy,
-        foregroundColor: Colors.white,
         leading: IconButton(
           tooltip: 'Kembali ke Halaman Berita',
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Detail Berita',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
+        title: const Text('Detail Berita'),
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980),
+          constraints: const BoxConstraints(maxWidth: 840),
           child: ListView(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
-              24,
+              22,
               horizontalPadding,
-              44,
+              48,
             ),
             children: [
               Align(
                 alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
+                child: TextButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 17),
                   label: const Text('Kembali ke Halaman Berita'),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
               if (_loadingDetail) ...[
                 const LinearProgressIndicator(),
                 const SizedBox(height: 14),
@@ -145,22 +140,22 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
               SiagaCard(
                 padding: EdgeInsets.zero,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(SiagaRadius.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _DetailHeroImage(
                         imageUrl: _article.imageUrl,
                         fallbackIcon: categoryIcon,
-                        height: width < 600 ? 220 : 350,
+                        height: width < 600 ? 210 : 340,
                       ),
                       Padding(
-                        padding: EdgeInsets.all(width < 600 ? 22 : 34),
+                        padding: EdgeInsets.all(width < 600 ? 20 : 32),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Wrap(
-                              spacing: 10,
+                              spacing: 8,
                               runSpacing: 8,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
@@ -168,57 +163,61 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                                   label: _article.category,
                                   tone: categoryTone,
                                   icon: categoryIcon,
+                                  compact: true,
                                 ),
                                 if (_article.isFeatured)
                                   const SiagaBadge(
                                     label: 'BERITA UTAMA',
                                     tone: SiagaTone.danger,
-                                    icon: Icons.star_rounded,
+                                    compact: true,
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                             Text(
                               _article.title,
                               style: Theme.of(context).textTheme.headlineLarge
                                   ?.copyWith(
-                                    fontSize: width < 600 ? 24 : 30,
-                                    height: 1.28,
-                                    color: SiagaColors.ink,
+                                    fontSize: width < 600 ? 23 : 28,
+                                    height: 1.25,
                                   ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 13,
+                                horizontal: 14,
+                                vertical: 11,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
+                                color: SiagaColors.surfaceSubtle,
+                                borderRadius: BorderRadius.circular(
+                                  SiagaRadius.md,
+                                ),
                                 border: Border.all(color: SiagaColors.border),
                               ),
                               child: Wrap(
                                 spacing: 20,
-                                runSpacing: 10,
+                                runSpacing: 8,
                                 children: [
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(
                                         Icons.calendar_today_outlined,
-                                        size: 16,
+                                        size: 15,
                                         color: SiagaColors.muted,
                                       ),
                                       const SizedBox(width: 7),
                                       Text(
                                         _article.publishedFormatted,
-                                        style: const TextStyle(
-                                          color: SiagaColors.ink,
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: SiagaColors.ink,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -227,17 +226,19 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                                     children: [
                                       const Icon(
                                         Icons.source_outlined,
-                                        size: 16,
-                                        color: SiagaColors.navyHover,
+                                        size: 15,
+                                        color: SiagaColors.primaryBlue,
                                       ),
                                       const SizedBox(width: 7),
                                       Text(
                                         'Sumber: ${_article.source}',
-                                        style: const TextStyle(
-                                          color: SiagaColors.navy,
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: SiagaColors.navy,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -245,17 +246,19 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                               ),
                             ),
                             if (_article.summary.isNotEmpty) ...[
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 20),
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: const Border(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: SiagaColors.surfaceSubtle,
+                                  border: Border(
                                     left: BorderSide(
-                                      color: SiagaColors.navyHover,
-                                      width: 4,
+                                      color: SiagaColors.navy,
+                                      width: 3.5,
                                     ),
                                   ),
                                 ),
@@ -264,14 +267,14 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                                   style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(
                                         color: SiagaColors.ink,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                         height: 1.6,
                                       ),
                                 ),
                               ),
                             ],
                             const SizedBox(height: 24),
-                            const Divider(height: 1, color: SiagaColors.border),
+                            const Divider(height: 1),
                             const SizedBox(height: 24),
                             SelectableText(
                               _article.content.isNotEmpty
@@ -280,73 +283,85 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(
                                     color: SiagaColors.ink,
-                                    fontSize: 15.5,
-                                    height: 1.8,
+                                    fontSize: 15.8,
+                                    height: 1.82,
                                   ),
                             ),
                             const SizedBox(height: 28),
                             Container(
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(14),
+                                color: SiagaColors.primarySoft,
+                                borderRadius: BorderRadius.circular(
+                                  SiagaRadius.lg,
+                                ),
                                 border: Border.all(
-                                  color: SiagaColors.navy.withValues(alpha: 0.2),
+                                  color: SiagaColors.primaryBorder,
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Row(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final copy = Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.school_rounded,
-                                        color: SiagaColors.navy,
-                                        size: 20,
+                                      Text(
+                                        'Edukasi Terkait: Gempa Bumi & Tsunami',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: SiagaColors.navy,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                       ),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Edukasi Terkait: Gempa Bumi & Tsunami',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 15,
-                                            color: SiagaColors.navy,
-                                          ),
-                                        ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Pelajari langkah keselamatan sebelum, saat, dan setelah gempa bumi maupun tsunami agar siap bertindak tepat.',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: SiagaColors.textSecondary,
+                                            ),
                                       ),
                                     ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Pelajari langkah keselamatan sebelum, saat, dan setelah gempa bumi maupun tsunami agar siap bertindak tepat.',
-                                    style: TextStyle(
-                                      color: SiagaColors.ink,
-                                      fontSize: 13.5,
-                                      height: 1.5,
+                                  );
+
+                                  final cta = FilledButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      widget.onOpenEducation?.call();
+                                    },
+                                    icon: const Icon(
+                                      Icons.menu_book_rounded,
+                                      size: 17,
                                     ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 8,
+                                    label: const Text(
+                                      'Buka Edukasi Gempa & Tsunami',
+                                    ),
+                                  );
+
+                                  if (constraints.maxWidth < 560) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        copy,
+                                        const SizedBox(height: 14),
+                                        cta,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
                                     children: [
-                                      FilledButton.icon(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          widget.onOpenEducation?.call();
-                                        },
-                                        icon: const Icon(
-                                          Icons.menu_book_rounded,
-                                          size: 18,
-                                        ),
-                                        label: const Text(
-                                          'Buka Edukasi Gempa & Tsunami',
-                                        ),
-                                      ),
+                                      Expanded(child: copy),
+                                      const SizedBox(width: 16),
+                                      cta,
                                     ],
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -380,18 +395,12 @@ class _DetailHeroImage extends StatelessWidget {
     final fallback = Container(
       height: height,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFDBEAFE), Color(0xFFEFF6FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+      color: SiagaColors.surfaceMuted,
       alignment: Alignment.center,
       child: Icon(
         fallbackIcon,
-        size: 64,
-        color: SiagaColors.navy.withValues(alpha: 0.45),
+        size: 56,
+        color: SiagaColors.navy.withValues(alpha: 0.28),
       ),
     );
 
@@ -405,11 +414,10 @@ class _DetailHeroImage extends StatelessWidget {
       child: Image.network(
         imageUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallback,
+        errorBuilder: (_, _, _) => fallback,
         loadingBuilder: (context, child, progress) =>
             progress == null ? child : fallback,
       ),
     );
   }
 }
-

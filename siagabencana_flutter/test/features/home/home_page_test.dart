@@ -6,63 +6,75 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:siagabencana_flutter/app/network/api_config.dart';
+import 'package:siagabencana_flutter/app/siaga_theme.dart';
 import 'package:siagabencana_flutter/features/home/data/home_data_service.dart';
 import 'package:siagabencana_flutter/features/home/presentation/home_page.dart';
 
 void main() {
-  testWidgets('renders each BMKG coverage from backend as a distinct status', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1280, 1800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final alerts = [
-      _alert('Wilayah Kota Padang', 'kota_padang', true),
-      _alert('Wilayah Sumbar lainnya', 'sumbar_lainnya', false),
-      _alert('Wilayah provinsi lain', 'provinsi_lain', false),
-      _alert('Wilayah belum diketahui', 'tidak_diketahui', false),
-    ];
-    final client = _client(alerts: alerts);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: HomePage(
-            onOpenSection: (_) {},
-            dataService: HomeDataService(
-              apiConfig: const ApiConfig(baseUrl: 'https://siagabencana.test'),
-              client: client,
+  testWidgets(
+    'renders weather and air quality cleanly without BMKG warnings or alert API call',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final requestedPaths = <String>[];
+      final client = MockClient((request) async {
+        requestedPaths.add(request.url.path);
+        return _openMeteoResponse(request);
+      });
+      addTearDown(client.close);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: SiagaTheme.light,
+          home: Scaffold(
+            body: HomePage(
+              onOpenSection: (_) {},
+              dataService: HomeDataService(
+                apiConfig: const ApiConfig(baseUrl: 'https://siagabencana.test'),
+                client: client,
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Peringatan khusus Kota Padang'), findsOneWidget);
-    expect(find.text('Sumatera Barat di luar Kota Padang'), findsOneWidget);
-    expect(find.text('Provinsi lain'), findsOneWidget);
-    expect(find.text('Cakupan belum dipastikan'), findsOneWidget);
-    expect(find.text('Tidak ada peringatan dalam feed'), findsNothing);
-    client.close();
-  });
+      expect(requestedPaths, isNot(contains('/api/peringatan-bencana')));
+      expect(find.text('Peringatan BMKG'), findsNothing);
+      expect(find.text('Cuaca Kota Padang'), findsOneWidget);
+      expect(find.text('22°C'), findsOneWidget);
+      expect(find.text('Berawan'), findsOneWidget);
+      expect(find.text('Kualitas Udara'), findsNWidgets(2));
+      expect(find.text('AQI 42'), findsOneWidget);
+      expect(find.text('Baik'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('shows loading then an explicit empty-feed message', (
+  testWidgets('shows loading state then live weather and air quality values', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final alertResponse = Completer<http.Response>();
-    final client = MockClient((request) async {
-      if (request.url.path == '/api/peringatan-bencana') {
-        return alertResponse.future;
+
+    final weatherCompleter = Completer<http.Response>();
+    final airCompleter = Completer<http.Response>();
+    final client = MockClient((request) {
+      if (request.url.host == 'api.open-meteo.com') {
+        return weatherCompleter.future;
       }
-      return _openMeteoResponse(request);
+      return airCompleter.future;
     });
+    addTearDown(client.close);
+
     await tester.pumpWidget(
       MaterialApp(
+        theme: SiagaTheme.light,
         home: Scaffold(
           body: HomePage(
             onOpenSection: (_) {},
@@ -75,33 +87,43 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Memuat data'), findsOneWidget);
 
-    alertResponse.complete(
-      http.Response(
-        jsonEncode({
-          'success': true,
-          'source': 'BMKG',
-          'checked_at': '2026-10-24T10:00:00+07:00',
-          'alerts': [],
-        }),
-        200,
+    expect(find.text('Memuat data'), findsNWidgets(2));
+    expect(find.text('Peringatan BMKG'), findsNothing);
+
+    weatherCompleter.complete(
+      _openMeteoResponse(
+        http.Request('GET', Uri.https('api.open-meteo.com', '/v1/forecast')),
+      ),
+    );
+    airCompleter.complete(
+      _openMeteoResponse(
+        http.Request(
+          'GET',
+          Uri.https('air-quality-api.open-meteo.com', '/v1/air-quality'),
+        ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Tidak ada peringatan dalam feed'), findsOneWidget);
-    expect(find.textContaining('bukan jaminan keadaan aman'), findsOneWidget);
-    client.close();
+
+    expect(find.text('22°C'), findsOneWidget);
+    expect(find.text('AQI 42'), findsOneWidget);
   });
 
-  testWidgets('shows retry action when a source request fails', (tester) async {
+  testWidgets('shows retry action when Open-Meteo source requests fail', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1280, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+
     final client = MockClient((request) async => http.Response('{}', 503));
+    addTearDown(client.close);
+
     await tester.pumpWidget(
       MaterialApp(
+        theme: SiagaTheme.light,
         home: Scaffold(
           body: HomePage(
             onOpenSection: (_) {},
@@ -115,27 +137,56 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Belum tersedia'), findsNWidgets(3));
-    expect(find.text('Coba lagi'), findsNWidgets(3));
-    client.close();
+    expect(find.text('Peringatan BMKG'), findsNothing);
+    expect(find.text('Belum tersedia'), findsNWidgets(2));
+    expect(find.text('Coba lagi'), findsNWidgets(2));
+  });
+
+  testWidgets('adapts proportionally across mobile, tablet, and desktop', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final size in const [
+      Size(375, 812),
+      Size(820, 1024),
+      Size(1440, 900),
+    ]) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+
+      final client = MockClient((request) async => _openMeteoResponse(request));
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(size),
+          theme: SiagaTheme.light,
+          home: Scaffold(
+            body: HomePage(
+              key: ValueKey(size),
+              onOpenSection: (_) {},
+              dataService: HomeDataService(
+                apiConfig: const ApiConfig(baseUrl: 'https://siagabencana.test'),
+                client: client,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Pemantauan kondisi terkini'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Pemantauan kondisi terkini'), findsOneWidget);
+      expect(find.text('Peringatan BMKG'), findsNothing);
+      expect(tester.takeException(), isNull);
+      client.close();
+    }
   });
 }
-
-MockClient _client({required List<Map<String, Object?>> alerts}) =>
-    MockClient((request) async {
-      if (request.url.path == '/api/peringatan-bencana') {
-        return http.Response(
-          jsonEncode({
-            'success': true,
-            'source': 'BMKG',
-            'checked_at': '2026-10-24T10:00:00+07:00',
-            'alerts': alerts,
-          }),
-          200,
-        );
-      }
-      return _openMeteoResponse(request);
-    });
 
 http.Response _openMeteoResponse(http.Request request) {
   if (request.url.host == 'api.open-meteo.com') {
@@ -165,12 +216,3 @@ http.Response _openMeteoResponse(http.Request request) {
     200,
   );
 }
-
-Map<String, Object?> _alert(String title, String coverage, bool specific) => {
-  'title': title,
-  'description': 'Informasi sesuai cakupan dari backend.',
-  'published_formatted': '24 Oktober 2026, 10:00 WIB',
-  'link': 'https://www.bmkg.go.id/alerts/nowcast/id/sample.xml',
-  'coverage': coverage,
-  'is_specific_to_padang': specific,
-};

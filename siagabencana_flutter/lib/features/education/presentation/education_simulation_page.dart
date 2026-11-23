@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
+import '../../../app/widgets/siaga_components.dart';
 import '../data/education_data_service.dart';
 
 class EducationSimulationPage extends StatefulWidget {
@@ -81,16 +82,13 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
   }
 
   void _selectChoice(SimulationStepItem step, SimulationChoiceItem choice) {
-    if (_currentStepChoice != null) {
-      return;
-    }
+    if (_currentStepChoice != null) return;
     setState(() {
       _currentStepChoice = choice;
       _selectedChoicesByStepId[step.id] = choice.id;
       _submitError = null;
     });
 
-    // Auto-save draft progress to Laravel DB
     _service.scheduleSimulationDraftSave(
       widget.simulation.id,
       currentStepIndex: _currentStepIndex,
@@ -126,9 +124,7 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
   }
 
   Future<void> _submitToBackend() async {
-    if (_isSubmitting) {
-      return;
-    }
+    if (_isSubmitting) return;
     setState(() {
       _isSubmitting = true;
       _submitError = null;
@@ -140,17 +136,13 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
         Map<int, int>.from(_selectedChoicesByStepId),
         clientSubmissionId: _clientSubmissionId,
       );
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
         _serverResult = res;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
         _submitError = e.toString();
@@ -162,22 +154,22 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
   Widget build(BuildContext context) {
     final sim = widget.simulation;
     final isGempa = sim.category == 'Gempa Bumi';
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
 
     return Scaffold(
       backgroundColor: SiagaColors.background,
-      appBar: AppBar(
-        backgroundColor: SiagaColors.navy,
-        foregroundColor: Colors.white,
-        title: Text(
-          'Simulasi ${sim.category}',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
+      appBar: AppBar(title: Text('Simulasi ${sim.category}')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          22,
+          horizontalPadding,
+          48,
+        ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
+            constraints: const BoxConstraints(maxWidth: 820),
             child: _serverResult != null
                 ? _buildFinishedCard(sim, _serverResult!)
                 : !_hasStarted
@@ -193,94 +185,83 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
     final hasDraft =
         sim.draft != null && sim.draft!.selectedChoices.isNotEmpty;
 
-    return Container(
-      width: double.infinity,
+    return SiagaCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: SiagaColors.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isGempa
-                  ? const Color(0xFFFEF3C7)
-                  : const Color(0xFFE0F2FE),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'PETUNJUK SIMULASI · ${sim.category.toUpperCase()}',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-                color: isGempa
-                    ? const Color(0xFFB45309)
-                    : const Color(0xFF0369A1),
-              ),
-            ),
+          SiagaBadge(
+            label: 'PETUNJUK SIMULASI · ${sim.category.toUpperCase()}',
+            tone: isGempa ? SiagaTone.warning : SiagaTone.info,
+            icon: isGempa ? Icons.vibration_rounded : Icons.waves_rounded,
+            compact: true,
           ),
-          const SizedBox(height: 12),
-          Text(
-            sim.title,
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
+          const SizedBox(height: 14),
+          Text(sim.title, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 10),
           Text(
             sim.description,
-            style: const TextStyle(
-              fontSize: 14.8,
-              height: 1.6,
-              color: SiagaColors.textDark,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: SiagaColors.ink),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
+              color: SiagaColors.surfaceSubtle,
+              borderRadius: BorderRadius.circular(SiagaRadius.md),
+              border: Border.all(color: SiagaColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Aturan & Petunjuk Pelaksanaan:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                Text(
+                  'Aturan & Petunjuk Pelaksanaan',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: SiagaColors.navy,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text('• Skenario terdiri dari ${_steps.length} tahap keputusan keselamatan.'),
-                const Text('• Setiap pilihan langsung menampilkan penilaian dan penjelasan tindakan terbaik.'),
-                const Text('• Progres tahapan tersimpan otomatis ke akun Anda jika keluar di tengah jalan.'),
-                const Text('• Penilaian akhir dihitung dan disimpan di server Laravel.'),
+                const SizedBox(height: 10),
+                SiagaBullet(
+                  text:
+                      'Skenario terdiri dari ${_steps.length} tahap keputusan keselamatan.',
+                  icon: Icons.layers_outlined,
+                  color: SiagaColors.primaryBlue,
+                ),
+                const SiagaBullet(
+                  text:
+                      'Setiap pilihan langsung menampilkan evaluasi dan penjelasan tindakan terbaik.',
+                  icon: Icons.fact_check_outlined,
+                  color: SiagaColors.safe,
+                ),
+                const SiagaBullet(
+                  text:
+                      'Progres tahapan tersimpan otomatis ke akun Anda jika keluar di tengah jalan.',
+                  icon: Icons.cloud_done_outlined,
+                  color: SiagaColors.info,
+                ),
+                const SiagaBullet(
+                  text: 'Penilaian akhir dihitung dan disimpan di server.',
+                  icon: Icons.verified_outlined,
+                  color: SiagaColors.navy,
+                ),
               ],
             ),
           ),
           const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Text(
-              '⚠️ Referensi: ${sim.safetyReference}. Simulasi ini bersifat edukatif dan bukan pengganti instruksi resmi petugas saat bencana nyata.',
-              style: const TextStyle(fontSize: 12.8, color: Color(0xFF92400E)),
-            ),
+          SiagaNotice(
+            title: 'Catatan Referensi Keselamatan',
+            message:
+                'Referensi: ${sim.safetyReference}. Simulasi ini bersifat edukatif dan tidak menggantikan instruksi petugas resmi saat bencana nyata.',
+            tone: SiagaTone.warning,
+            icon: Icons.info_outline_rounded,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           Wrap(
-            spacing: 12,
+            spacing: 10,
             runSpacing: 10,
             children: [
               if (hasDraft)
@@ -289,17 +270,14 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                     backgroundColor: SiagaColors.safe,
                   ),
                   onPressed: () => _startOrResume(reset: false),
-                  icon: const Icon(Icons.play_arrow_rounded),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
                   label: Text(
                     'Lanjutkan dari Tahap ${sim.draft!.currentStepIndex + 1}',
                   ),
                 ),
               FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: SiagaColors.navy,
-                ),
                 onPressed: () => _startOrResume(reset: true),
-                icon: const Icon(Icons.psychology_alt_rounded),
+                icon: const Icon(Icons.psychology_alt_outlined, size: 18),
                 label: Text(
                   hasDraft ? 'Mulai dari Awal' : 'Mulai Simulasi Sekarang',
                 ),
@@ -321,14 +299,8 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isGempa
-                  ? const [SiagaColors.navy, Color(0xFFB45309)]
-                  : const [Color(0xFF0369A1), SiagaColors.navy],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
+            color: SiagaColors.navy,
+            borderRadius: BorderRadius.circular(SiagaRadius.lg),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,66 +308,57 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
               Text(
                 'SKENARIO ${sim.category.toUpperCase()} · TAHAP ${_currentStepIndex + 1} DARI ${_steps.length}',
                 style: const TextStyle(
-                  color: Color(0xFFBAE6FD),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+                  color: Color(0xFF93C5FD),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.7,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 sim.title,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: (_currentStepIndex + 1) / _steps.length,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                color: const Color(0xFF38BDF8),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(SiagaRadius.pill),
+                child: LinearProgressIndicator(
+                  value: (_currentStepIndex + 1) / _steps.length,
+                  minHeight: 6,
+                  backgroundColor: Colors.white.withValues(alpha: 0.16),
+                  color: const Color(0xFF38BDF8),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
+        SiagaCard(
+          padding: const EdgeInsets.all(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 step.situationTitle,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: SiagaColors.navy,
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 step.situationText,
-                style: const TextStyle(
-                  fontSize: 15.2,
-                  height: 1.65,
-                  color: SiagaColors.textDark,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: SiagaColors.ink,
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
+              Text(
                 'Pilih tindakan penyelamatan yang paling tepat:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: SiagaColors.textMuted,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: SiagaColors.muted,
                 ),
               ),
               const SizedBox(height: 12),
@@ -405,21 +368,21 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
         ),
 
         if (_currentStepChoice != null) ...[
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: _currentStepChoice!.isCorrect
-                  ? const Color(0xFFF0FDF4)
-                  : const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(18),
+                  ? SiagaColors.safeSoft
+                  : SiagaColors.dangerSoft,
+              borderRadius: BorderRadius.circular(SiagaRadius.lg),
               border: Border.all(
                 color: _currentStepChoice!.isCorrect
-                    ? const Color(0xFF86EFAC)
-                    : const Color(0xFFFCA5A5),
+                    ? SiagaColors.safeBorder
+                    : SiagaColors.dangerBorder,
               ),
             ),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -427,22 +390,22 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                   children: [
                     Icon(
                       _currentStepChoice!.isCorrect
-                          ? Icons.check_circle_rounded
+                          ? Icons.check_circle_outline_rounded
                           : Icons.warning_amber_rounded,
                       color: _currentStepChoice!.isCorrect
                           ? SiagaColors.safe
                           : SiagaColors.danger,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 9),
                     Expanded(
                       child: Text(
                         '${_currentStepChoice!.assessment} (Skor tahap: ${_currentStepChoice!.score})',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                           color: _currentStepChoice!.isCorrect
-                              ? SiagaColors.safe
-                              : SiagaColors.danger,
+                              ? SiagaColors.safeText
+                              : SiagaColors.dangerText,
                         ),
                       ),
                     ),
@@ -451,10 +414,8 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                 const SizedBox(height: 10),
                 Text(
                   _currentStepChoice!.feedback,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    height: 1.55,
-                    color: SiagaColors.textDark,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: SiagaColors.ink,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -462,28 +423,26 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: SiagaColors.surface,
+                    borderRadius: BorderRadius.circular(SiagaRadius.md),
                     border: Border.all(color: SiagaColors.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Tindakan yang Seharusnya Dilakukan:',
+                        'Tindakan yang Seharusnya Dilakukan',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
                           color: SiagaColors.navy,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         step.recommendedAction,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: SiagaColors.textDark,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: SiagaColors.ink,
                         ),
                       ),
                     ],
@@ -491,38 +450,24 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                 ),
                 if (_submitError != null) ...[
                   const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: SiagaColors.danger),
-                    ),
-                    child: Text(
-                      '⚠️ $_submitError',
-                      style: const TextStyle(
-                        color: SiagaColors.danger,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
+                  SiagaNotice(
+                    title: 'Gagal menyimpan hasil simulasi',
+                    message: _submitError!,
+                    tone: SiagaTone.danger,
+                    icon: Icons.error_outline_rounded,
                   ),
                 ],
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
+                  height: 46,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: SiagaColors.navy,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                    ),
                     onPressed: _isSubmitting
                         ? null
                         : () => unawaited(_nextOrSubmit()),
                     icon: _isSubmitting
                         ? const SizedBox.square(
-                            dimension: 18,
+                            dimension: 17,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
@@ -532,6 +477,7 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                             _submitError != null
                                 ? Icons.refresh_rounded
                                 : Icons.arrow_forward_rounded,
+                            size: 18,
                           ),
                     label: Text(
                       _isSubmitting
@@ -541,10 +487,6 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                           : _currentStepIndex < _steps.length - 1
                           ? 'Lanjutkan ke Tahap Berikutnya'
                           : 'Kirim & Lihat Hasil Simulasi',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
                     ),
                   ),
                 ),
@@ -564,60 +506,69 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
     final hasPicked = _currentStepChoice != null;
 
     Color borderColor = SiagaColors.border;
-    Color bgColor = const Color(0xFFF8FAFC);
+    Color bgColor = SiagaColors.surfaceSubtle;
 
     if (hasPicked) {
       if (isPicked) {
         borderColor = choice.isCorrect ? SiagaColors.safe : SiagaColors.danger;
         bgColor = choice.isCorrect
-            ? const Color(0xFFDCFCE7)
-            : const Color(0xFFFEE2E2);
+            ? SiagaColors.safeSoft
+            : SiagaColors.dangerSoft;
       } else if (choice.isCorrect) {
-        borderColor = SiagaColors.safe.withValues(alpha: 0.6);
-        bgColor = const Color(0xFFF0FDF4);
+        borderColor = SiagaColors.safeBorder;
+        bgColor = SiagaColors.safeSoft;
       }
     }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: hasPicked ? null : () => _selectChoice(step, choice),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: borderColor, width: isPicked ? 2 : 1),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: SiagaColors.navy,
-                child: Text(
-                  choice.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(SiagaRadius.md),
+          onTap: hasPicked ? null : () => _selectChoice(step, choice),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(SiagaRadius.md),
+              border: Border.all(
+                color: borderColor,
+                width: isPicked ? 1.6 : 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: SiagaColors.navy,
+                    borderRadius: BorderRadius.circular(SiagaRadius.sm),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    choice.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  choice.choiceText,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    height: 1.5,
-                    color: SiagaColors.textDark,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    choice.choiceText,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: SiagaColors.ink,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -628,52 +579,49 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
     SimulationItem sim,
     SimulationSubmissionResult result,
   ) {
-    return Container(
-      width: double.infinity,
+    final highScore = result.score >= 80;
+
+    return SiagaCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: SiagaColors.border),
-      ),
       child: Column(
         children: [
-          Icon(
-            result.score >= 80
-                ? Icons.verified_user_rounded
-                : Icons.school_rounded,
-            size: 64,
-            color: result.score >= 80 ? SiagaColors.safe : SiagaColors.warning,
+          SiagaIconTile(
+            icon: highScore
+                ? Icons.verified_user_outlined
+                : Icons.school_outlined,
+            size: 56,
+            color: highScore ? SiagaColors.safe : SiagaColors.warning,
+            backgroundColor: highScore
+                ? SiagaColors.safeSoft
+                : SiagaColors.warningSoft,
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Simulasi Selesai & Tersimpan!',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: SiagaColors.textDark,
-            ),
+          const SizedBox(height: 14),
+          Text(
+            'Simulasi Selesai & Tersimpan',
+            style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             sim.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, color: SiagaColors.textMuted),
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
+              color: SiagaColors.primarySoft,
+              borderRadius: BorderRadius.circular(SiagaRadius.lg),
+              border: Border.all(color: SiagaColors.primaryBorder),
             ),
             child: Column(
               children: [
                 const Text(
                   'NILAI KESIAPSIAGAAN (TERVALIDASI SERVER)',
                   style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
                     color: SiagaColors.navy,
                   ),
                 ),
@@ -682,38 +630,26 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
                   '${result.score} / ${result.maxScore}',
                   style: const TextStyle(
                     fontSize: 34,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: SiagaColors.navy,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 Text(
                   'Keputusan tepat: ${result.correctChoices} dari ${result.totalSteps} tahap',
-                  style: const TextStyle(
-                    fontSize: 13.5,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: SiagaColors.textMuted,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFDE68A)),
-            ),
-            child: Text(
-              '⚠️ ${result.safetyDisclaimer}',
-              style: const TextStyle(
-                fontSize: 12.8,
-                height: 1.5,
-                color: Color(0xFF92400E),
-              ),
-            ),
+          SiagaNotice(
+            title: 'Catatan Edukasi',
+            message: result.safetyDisclaimer,
+            tone: SiagaTone.warning,
+            icon: Icons.info_outline_rounded,
           ),
           const SizedBox(height: 20),
           Row(
@@ -721,7 +657,7 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _startOrResume(reset: true),
-                  icon: const Icon(Icons.replay_rounded),
+                  icon: const Icon(Icons.replay_rounded, size: 17),
                   label: const Text('Ulangi Simulasi'),
                 ),
               ),
@@ -729,7 +665,7 @@ class _EducationSimulationPageState extends State<EducationSimulationPage> {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.check_rounded),
+                  icon: const Icon(Icons.check_rounded, size: 17),
                   label: const Text('Kembali ke Edukasi'),
                 ),
               ),

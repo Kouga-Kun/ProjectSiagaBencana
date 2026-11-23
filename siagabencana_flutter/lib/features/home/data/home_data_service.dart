@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../app/network/api_config.dart';
-import 'bmkg_models.dart';
 import 'open_meteo_models.dart';
 
 class HomeDataService {
@@ -15,11 +14,6 @@ class HomeDataService {
   final ApiConfig apiConfig;
   final http.Client _client;
   final bool _ownsClient;
-
-  Future<BmkgAlertResponse> loadBmkgAlerts() async {
-    final json = await _getJson(apiConfig.endpoint('api/peringatan-bencana'));
-    return BmkgAlertResponse.fromJson(json);
-  }
 
   Future<CurrentWeather> loadWeather() async {
     final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {

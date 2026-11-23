@@ -12,32 +12,30 @@ class LiveStatusCard extends StatelessWidget {
     required this.message,
     required this.description,
     required this.tone,
+    this.headlineValue,
     this.updatedAt,
     this.details,
     this.onRetry,
+    this.isLoading = false,
     super.key,
   });
+
   final IconData icon;
   final String title;
   final String source;
   final String message;
   final String description;
   final SiagaTone tone;
+  final String? headlineValue;
   final String? updatedAt;
   final Widget? details;
   final VoidCallback? onRetry;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (tone) {
-      SiagaTone.neutral => SiagaColors.muted,
-      SiagaTone.info => SiagaColors.navyHover,
-      SiagaTone.warning => SiagaColors.warning,
-      SiagaTone.danger => SiagaColors.danger,
-      SiagaTone.success => SiagaColors.safe,
-    };
     return SiagaCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -45,63 +43,109 @@ class LiveStatusCard extends StatelessWidget {
             children: [
               SiagaIconTile(
                 icon: icon,
-                size: 44,
-                color: color,
-                backgroundColor: color.withValues(alpha: 0.09),
+                size: 38,
+                color: tone.accent,
+                backgroundColor: tone.background,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      source,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 11.5,
+                        color: SiagaColors.textSubtle,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          SiagaBadge(label: message, tone: tone),
-          const SizedBox(height: 12),
-          Text(description, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 14),
+          if (headlineValue != null) ...[
+            Text(
+              headlineValue!,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 26,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SiagaBadge(label: message, tone: tone, compact: true),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+          ),
+          if (isLoading) ...[
+            const SizedBox(height: 12),
+            const SiagaSkeletonBox(height: 10, width: 160),
+            const SizedBox(height: 6),
+            const SiagaSkeletonBox(height: 10, width: 110),
+          ],
           if (details != null) ...[const SizedBox(height: 12), details!],
           if (onRetry != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Coba lagi'),
               ),
             ),
           ],
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: SiagaColors.border),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(
-                Icons.source_outlined,
-                size: 16,
-                color: SiagaColors.muted,
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  source,
-                  style: const TextStyle(
-                    color: SiagaColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+          if (updatedAt != null && updatedAt!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 13,
+                  color: SiagaColors.textSubtle,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Diperbarui: $updatedAt',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: SiagaColors.textSubtle,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          if (updatedAt != null && updatedAt!.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(
-              'Diperbarui: $updatedAt',
-              style: const TextStyle(color: SiagaColors.muted, fontSize: 12),
+              ],
             ),
           ],
         ],
@@ -116,8 +160,10 @@ class WeatherStatusCard extends StatelessWidget {
     required this.onRetry,
     super.key,
   });
+
   final Future<CurrentWeather> future;
   final VoidCallback onRetry;
+
   @override
   Widget build(BuildContext context) => FutureBuilder<CurrentWeather>(
     future: future,
@@ -130,7 +176,7 @@ class WeatherStatusCard extends StatelessWidget {
           message: 'Memuat data',
           description: 'Mengambil kondisi cuaca terkini.',
           tone: SiagaTone.info,
-          details: LinearProgressIndicator(),
+          isLoading: true,
         );
       }
       if (snapshot.hasError || !snapshot.hasData) {
@@ -139,14 +185,14 @@ class WeatherStatusCard extends StatelessWidget {
           title: 'Cuaca Kota Padang',
           source: 'Open-Meteo Forecast',
           message: 'Belum tersedia',
-          description: 'Data cuaca tidak dapat dimuat. Status ini tidak menunjukkan cuaca aman.',
+          description:
+              'Data cuaca tidak dapat dimuat. Status ini tidak menunjukkan cuaca aman.',
           tone: SiagaTone.warning,
           onRetry: onRetry,
         );
       }
       final weather = snapshot.requireData;
       final details = <String>[
-        weather.condition,
         if (weather.apparentTemperature != null)
           'Terasa ${weather.apparentTemperature!.toStringAsFixed(0)}°C',
         if (weather.humidity != null)
@@ -158,8 +204,9 @@ class WeatherStatusCard extends StatelessWidget {
         icon: Icons.cloud_outlined,
         title: 'Cuaca Kota Padang',
         source: 'Open-Meteo Forecast',
-        message: '${weather.temperature.toStringAsFixed(0)}°C',
-        description: details,
+        headlineValue: '${weather.temperature.toStringAsFixed(0)}°C',
+        message: weather.condition,
+        description: details.isEmpty ? weather.condition : details,
         tone: SiagaTone.info,
         updatedAt: weather.updatedAt == null
             ? null
@@ -175,8 +222,10 @@ class AirQualityStatusCard extends StatelessWidget {
     required this.onRetry,
     super.key,
   });
+
   final Future<CurrentAirQuality> future;
   final VoidCallback onRetry;
+
   @override
   Widget build(BuildContext context) => FutureBuilder<CurrentAirQuality>(
     future: future,
@@ -184,21 +233,22 @@ class AirQualityStatusCard extends StatelessWidget {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const LiveStatusCard(
           icon: Icons.air_rounded,
-          title: 'Kualitas udara',
+          title: 'Kualitas Udara',
           source: 'Open-Meteo Air Quality',
           message: 'Memuat data',
           description: 'Mengambil estimasi kualitas udara.',
           tone: SiagaTone.info,
-          details: LinearProgressIndicator(),
+          isLoading: true,
         );
       }
       if (snapshot.hasError || !snapshot.hasData) {
         return LiveStatusCard(
           icon: Icons.air_rounded,
-          title: 'Kualitas udara',
+          title: 'Kualitas Udara',
           source: 'Open-Meteo Air Quality',
           message: 'Belum tersedia',
-          description: 'Estimasi kualitas udara tidak dapat dimuat. Nilai kosong tidak berarti udara aman.',
+          description:
+              'Estimasi kualitas udara tidak dapat dimuat. Nilai kosong tidak berarti udara aman.',
           tone: SiagaTone.warning,
           onRetry: onRetry,
         );
@@ -207,7 +257,7 @@ class AirQualityStatusCard extends StatelessWidget {
       final parts = <String>[
         if (air.pm25 != null) 'PM2.5 ${air.pm25!.toStringAsFixed(1)} µg/m³',
         if (air.pm10 != null) 'PM10 ${air.pm10!.toStringAsFixed(1)} µg/m³',
-        'Estimasi model, bukan pengukuran sensor lokal.',
+        'Estimasi model, bukan sensor lokal.',
       ];
       final tone = air.usAqi <= 50
           ? SiagaTone.success
@@ -216,9 +266,10 @@ class AirQualityStatusCard extends StatelessWidget {
           : SiagaTone.danger;
       return LiveStatusCard(
         icon: Icons.air_rounded,
-        title: 'Kualitas udara',
+        title: 'Kualitas Udara',
         source: 'Open-Meteo Air Quality · US AQI',
-        message: 'AQI ${air.usAqi.toStringAsFixed(0)} · ${air.category}',
+        headlineValue: 'AQI ${air.usAqi.toStringAsFixed(0)}',
+        message: air.category,
         description: parts.join(' · '),
         tone: tone,
         updatedAt: air.updatedAt == null ? null : '${air.updatedAt} WIB',

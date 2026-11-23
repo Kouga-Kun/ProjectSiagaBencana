@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
+import '../../../app/widgets/siaga_components.dart';
 import '../data/education_data_service.dart';
 import 'education_material_detail_page.dart';
 
@@ -50,17 +51,13 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
     });
     try {
       final fetched = await _service.fetchQuizDetail(widget.quiz.slug);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _loadedQuiz = fetched;
         _loadingQuestions = false;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _loadingQuestions = false;
         _loadError = e.toString();
@@ -70,15 +67,13 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
 
   Future<void> _submitQuiz() async {
     final quiz = _loadedQuiz;
-    if (quiz == null || _isSubmitting) {
-      return;
-    }
+    if (quiz == null || _isSubmitting) return;
 
     if (_selectedOptionIds.length < quiz.questions.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Jawab seluruh pertanyaan kuis terlebih dahulu sebelum melihat nilai akhir.',
+            'Jawab seluruh pertanyaan kuis terlebih dahulu sebelum mengirim.',
           ),
           backgroundColor: SiagaColors.warning,
         ),
@@ -97,19 +92,13 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
         Map<int, int>.from(_selectedOptionIds),
         clientSubmissionId: _clientSubmissionId,
       );
-
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
         _submissionResult = result;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
         _submitError = e.toString();
@@ -133,42 +122,40 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
   @override
   Widget build(BuildContext context) {
     final qz = _loadedQuiz ?? widget.quiz;
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
 
     return Scaffold(
       backgroundColor: SiagaColors.background,
-      appBar: AppBar(
-        backgroundColor: SiagaColors.navy,
-        foregroundColor: Colors.white,
-        title: Text(
-          'Kuis ${qz.category}',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
+      appBar: AppBar(title: Text('Kuis ${qz.category}')),
       body: _loadingQuestions
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_loadError!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _loadQuestions,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Muat Ulang Kuis'),
-                    ),
-                  ],
+                child: SiagaEmptyState(
+                  icon: Icons.quiz_outlined,
+                  title: 'Gagal memuat soal kuis',
+                  message: _loadError!,
+                  action: FilledButton.icon(
+                    onPressed: _loadQuestions,
+                    icon: const Icon(Icons.refresh_rounded, size: 17),
+                    label: const Text('Muat Ulang Kuis'),
+                  ),
                 ),
               ),
             )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                22,
+                horizontalPadding,
+                48,
+              ),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 860),
+                  constraints: const BoxConstraints(maxWidth: 820),
                   child: _submissionResult != null
                       ? _buildResultView(_submissionResult!)
                       : _buildQuestionView(qz),
@@ -180,7 +167,11 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
 
   Widget _buildQuestionView(QuizItem qz) {
     if (qz.questions.isEmpty) {
-      return const Center(child: Text('Soal kuis belum tersedia.'));
+      return const SiagaEmptyState(
+        icon: Icons.quiz_outlined,
+        title: 'Soal kuis belum tersedia',
+        message: 'Belum ada pertanyaan yang terdaftar pada kuis ini.',
+      );
     }
 
     final question = qz.questions[_currentIndex];
@@ -191,14 +182,8 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
+        SiagaCard(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -207,141 +192,129 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
                 children: [
                   Text(
                     'Soal ${_currentIndex + 1} dari $total',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: SiagaColors.navy,
-                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Text(
-                    'Terjawab: $answeredCount/$total',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: SiagaColors.safe,
-                      fontSize: 13.5,
-                    ),
+                  SiagaStatusDot(
+                    label: 'Terjawab $answeredCount/$total',
+                    tone: answeredCount == total
+                        ? SiagaTone.success
+                        : SiagaTone.info,
                   ),
                 ],
               ),
               const SizedBox(height: 10),
               ClipRRect(
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(SiagaRadius.pill),
                 child: LinearProgressIndicator(
                   value: total > 0 ? answeredCount / total : 0,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  color: SiagaColors.navy,
+                  minHeight: 7,
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 '${qz.title} · Tingkat ${qz.difficulty}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: SiagaColors.textMuted,
-                ),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
+        SiagaCard(
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (question.subtopic.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    question.subtopic,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: SiagaColors.navy,
-                    ),
-                  ),
+              if (question.subtopic.isNotEmpty) ...[
+                SiagaBadge(
+                  label: question.subtopic,
+                  tone: SiagaTone.info,
+                  compact: true,
                 ),
+                const SizedBox(height: 12),
+              ],
               Text(
                 question.questionText,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  height: 1.5,
-                  color: SiagaColors.textDark,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  height: 1.45,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               for (final opt in question.options)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () {
-                      setState(() {
-                        _selectedOptionIds[question.id] = opt.id;
-                      });
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: selectedOptId == opt.id
-                            ? const Color(0xFFEFF6FF)
-                            : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(SiagaRadius.md),
+                      onTap: () {
+                        setState(() {
+                          _selectedOptionIds[question.id] = opt.id;
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
                           color: selectedOptId == opt.id
-                              ? SiagaColors.navy
-                              : SiagaColors.border,
-                          width: selectedOptId == opt.id ? 2 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: selectedOptId == opt.id
+                              ? SiagaColors.primarySoft
+                              : SiagaColors.surfaceSubtle,
+                          borderRadius: BorderRadius.circular(SiagaRadius.md),
+                          border: Border.all(
+                            color: selectedOptId == opt.id
                                 ? SiagaColors.navy
-                                : const Color(0xFFCBD5E1),
-                            child: Text(
-                              opt.optionLabel,
-                              style: TextStyle(
+                                : SiagaColors.border,
+                            width: selectedOptId == opt.id ? 1.6 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
                                 color: selectedOptId == opt.id
-                                    ? Colors.white
-                                    : SiagaColors.textDark,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
+                                    ? SiagaColors.navy
+                                    : SiagaColors.surface,
+                                borderRadius: BorderRadius.circular(
+                                  SiagaRadius.sm,
+                                ),
+                                border: Border.all(
+                                  color: selectedOptId == opt.id
+                                      ? SiagaColors.navy
+                                      : SiagaColors.borderStrong,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                opt.optionLabel,
+                                style: TextStyle(
+                                  color: selectedOptId == opt.id
+                                      ? Colors.white
+                                      : SiagaColors.ink,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              opt.optionText,
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                height: 1.45,
-                                color: SiagaColors.textDark,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                opt.optionText,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: SiagaColors.ink,
+                                      fontWeight: selectedOptId == opt.id
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -352,30 +325,11 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
 
         if (_submitError != null) ...[
           const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: SiagaColors.danger),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.error_outline, color: SiagaColors.danger),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _submitError!,
-                    style: const TextStyle(
-                      color: SiagaColors.danger,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          SiagaNotice(
+            title: 'Pengiriman jawaban belum berhasil',
+            message: _submitError!,
+            tone: SiagaTone.danger,
+            icon: Icons.error_outline_rounded,
           ),
         ],
 
@@ -385,12 +339,8 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
             if (_currentIndex > 0)
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _currentIndex--;
-                    });
-                  },
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => setState(() => _currentIndex--),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 17),
                   label: const Text('Soal Sebelumnya'),
                 ),
               ),
@@ -398,15 +348,8 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
             Expanded(
               child: _currentIndex < total - 1
                   ? FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: SiagaColors.navy,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _currentIndex++;
-                        });
-                      },
-                      icon: const Icon(Icons.arrow_forward_rounded),
+                      onPressed: () => setState(() => _currentIndex++),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 17),
                       label: const Text('Soal Berikutnya'),
                     )
                   : FilledButton.icon(
@@ -416,7 +359,7 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
                       onPressed: _isSubmitting ? null : _submitQuiz,
                       icon: _isSubmitting
                           ? const SizedBox.square(
-                              dimension: 18,
+                              dimension: 17,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
@@ -425,7 +368,8 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
                           : Icon(
                               _submitError != null
                                   ? Icons.refresh_rounded
-                                  : Icons.check_circle_rounded,
+                                  : Icons.check_circle_outline_rounded,
+                              size: 18,
                             ),
                       label: Text(
                         _isSubmitting
@@ -438,87 +382,81 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        const Text(
-          'Kunci jawaban dan pembahasan hanya ditampilkan setelah kuis selesai dikirim dan dinilai oleh server.',
-          style: TextStyle(fontSize: 12.5, color: SiagaColors.textMuted),
+        const SizedBox(height: 12),
+        Text(
+          'Kunci jawaban dan pembahasan ditampilkan setelah seluruh jawaban dikirim dan divalidasi oleh server.',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );
   }
 
   Widget _buildResultView(QuizSubmissionResult result) {
+    final passed = result.finalScore >= 75;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: SiagaColors.border),
-          ),
+        SiagaCard(
+          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Text(
-                'Hasil Akhir Kuis (Tervalidasi Server)',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: SiagaColors.textDark,
-                ),
+              SiagaBadge(
+                label: 'TERVALIDASI SERVER',
+                tone: passed ? SiagaTone.success : SiagaTone.warning,
+                icon: Icons.verified_outlined,
+                compact: true,
               ),
               const SizedBox(height: 12),
+              Text(
+                'Hasil Akhir Kuis',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 10),
               Text(
                 '${result.finalScore}',
                 style: TextStyle(
                   fontSize: 48,
-                  fontWeight: FontWeight.w900,
-                  color: result.finalScore >= 75
-                      ? SiagaColors.safe
-                      : SiagaColors.warning,
+                  fontWeight: FontWeight.w800,
+                  color: passed ? SiagaColors.safe : SiagaColors.warning,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               Text(
                 'Keberhasilan: ${result.percentage}% · Percobaan ke-${result.attemptsCount}',
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  color: SiagaColors.textMuted,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (result.bestScore != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   'Nilai Terbaik: ${result.bestScore} · Nilai Terakhir: ${result.latestScore ?? result.finalScore}',
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: SiagaColors.navy,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
-              const SizedBox(height: 18),
-              Wrap(
+              const SizedBox(height: 20),
+              SiagaResponsiveGrid(
+                minimumItemWidth: 160,
                 spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
                 children: [
-                  _statBox(
-                    'Jumlah Soal',
-                    '${result.totalQuestions}',
-                    SiagaColors.navy,
+                  SiagaMetricTile(
+                    label: 'Jumlah Soal',
+                    value: '${result.totalQuestions}',
+                    tone: SiagaTone.info,
                   ),
-                  _statBox(
-                    'Jawaban Benar',
-                    '${result.correctAnswers}',
-                    SiagaColors.safe,
+                  SiagaMetricTile(
+                    label: 'Jawaban Benar',
+                    value: '${result.correctAnswers}',
+                    tone: SiagaTone.success,
                   ),
-                  _statBox(
-                    'Jawaban Salah',
-                    '${result.wrongAnswers}',
-                    SiagaColors.danger,
+                  SiagaMetricTile(
+                    label: 'Jawaban Salah',
+                    value: '${result.wrongAnswers}',
+                    tone: SiagaTone.danger,
                   ),
                 ],
               ),
@@ -528,29 +466,34 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
         const SizedBox(height: 18),
 
         if (result.recommendedMaterials.isNotEmpty) ...[
-          Container(
-            width: double.infinity,
+          SiagaCard(
+            backgroundColor: SiagaColors.primarySoft,
+            borderColor: SiagaColors.primaryBorder,
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '📚 Rekomendasi Materi untuk Dipelajari Kembali',
-                  style: TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w800,
-                    color: SiagaColors.navy,
-                  ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.menu_book_rounded,
+                      size: 18,
+                      color: SiagaColors.navy,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rekomendasi Materi untuk Dipelajari Kembali',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: SiagaColors.navy,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 for (final rec in result.recommendedMaterials)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 6),
                     child: InkWell(
                       onTap: () {
                         Navigator.of(context).push(
@@ -565,9 +508,9 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.menu_book_rounded,
-                            size: 18,
-                            color: SiagaColors.navy,
+                            Icons.arrow_forward_rounded,
+                            size: 15,
+                            color: SiagaColors.primaryBlue,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -575,7 +518,7 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
                               rec.title,
                               style: const TextStyle(
                                 color: SiagaColors.navy,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
                               ),
                             ),
@@ -590,73 +533,102 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
           const SizedBox(height: 18),
         ],
 
-        const Text(
+        Text(
           'Pembahasan Jawaban',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: SiagaColors.textDark,
-          ),
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         for (final rev in result.reviews)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: rev.isCorrect
-                    ? const Color(0xFF86EFAC)
-                    : const Color(0xFFFCA5A5),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: SiagaColors.surface,
+                borderRadius: BorderRadius.circular(SiagaRadius.md),
+                border: Border.all(
+                  color: rev.isCorrect
+                      ? SiagaColors.safeBorder
+                      : SiagaColors.dangerBorder,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Soal ${rev.questionNumber} · ${rev.isCorrect ? "✓ Benar" : "✗ Kurang Tepat"}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: rev.isCorrect
-                        ? SiagaColors.safe
-                        : SiagaColors.danger,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  rev.questionText,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: SiagaColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Jawaban Kamu: (${rev.selectedOptionLabel}) ${rev.selectedOptionText}',
-                  style: const TextStyle(fontSize: 13.5),
-                ),
-                if (!rev.isCorrect)
-                  Text(
-                    'Jawaban Benar: (${rev.correctOptionLabel}) ${rev.correctOptionText}',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: SiagaColors.safe,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(SiagaRadius.md - 1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: rev.isCorrect
+                            ? SiagaColors.safe
+                            : SiagaColors.danger,
+                        width: 3.5,
+                      ),
                     ),
                   ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pembahasan: ${rev.explanation}',
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    color: SiagaColors.textMuted,
-                    height: 1.45,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            rev.isCorrect
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.cancel_outlined,
+                            size: 17,
+                            color: rev.isCorrect
+                                ? SiagaColors.safe
+                                : SiagaColors.danger,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Soal ${rev.questionNumber} · ${rev.isCorrect ? "Benar" : "Kurang Tepat"}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: rev.isCorrect
+                                  ? SiagaColors.safeText
+                                  : SiagaColors.dangerText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        rev.questionText,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Jawaban Kamu: (${rev.selectedOptionLabel}) ${rev.selectedOptionText}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: SiagaColors.ink,
+                        ),
+                      ),
+                      if (!rev.isCorrect) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          'Jawaban Benar: (${rev.correctOptionLabel}) ${rev.correctOptionText}',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: SiagaColors.safeText,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pembahasan: ${rev.explanation}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
 
@@ -666,7 +638,7 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _restartQuiz,
-                icon: const Icon(Icons.replay_rounded),
+                icon: const Icon(Icons.replay_rounded, size: 17),
                 label: const Text('Ulangi Kuis'),
               ),
             ),
@@ -674,42 +646,13 @@ class _EducationQuizPageState extends State<EducationQuizPage> {
             Expanded(
               child: FilledButton.icon(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.check_rounded),
+                icon: const Icon(Icons.check_rounded, size: 17),
                 label: const Text('Kembali ke Edukasi'),
               ),
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _statBox(String label, String value, Color color) {
-    return Container(
-      width: 130,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: SiagaColors.border),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: SiagaColors.textMuted),
-          ),
-        ],
-      ),
     );
   }
 }

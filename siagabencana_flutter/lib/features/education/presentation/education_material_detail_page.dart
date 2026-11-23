@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/siaga_theme.dart';
+import '../../../app/widgets/siaga_components.dart';
 import '../data/education_data_service.dart';
 
 class EducationMaterialDetailPage extends StatefulWidget {
@@ -60,9 +61,7 @@ class _EducationMaterialDetailPageState
 
     try {
       final fetched = await _service.fetchMaterialDetail(_currentSlugOrId);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _detail = fetched;
         _lastSentPercent = fetched.progressPercent;
@@ -70,17 +69,13 @@ class _EducationMaterialDetailPageState
       });
       _scheduleScrollRestore(fetched.lastPosition);
     } on EducationDataException catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _loadingDetail = false;
         _errorMessage = e.message;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _loadingDetail = false;
         if (_detail == null) {
@@ -96,9 +91,7 @@ class _EducationMaterialDetailPageState
     }
     _didRestoreScroll = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) {
-        return;
-      }
+      if (!mounted || !_scrollController.hasClients) return;
       final maxExtent = _scrollController.position.maxScrollExtent;
       if (maxExtent > 100) {
         final target = ((savedPosition / 100.0) * maxExtent).clamp(
@@ -107,8 +100,8 @@ class _EducationMaterialDetailPageState
         );
         _scrollController.animateTo(
           target,
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeOut,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -116,21 +109,15 @@ class _EducationMaterialDetailPageState
 
   void _onScrollChanged() {
     final material = _detail;
-    if (material == null || !_scrollController.hasClients) {
-      return;
-    }
+    if (material == null || !_scrollController.hasClients) return;
     final maxExtent = _scrollController.position.maxScrollExtent;
-    if (maxExtent <= 0) {
-      return;
-    }
+    if (maxExtent <= 0) return;
 
     final pct = ((_scrollController.offset / maxExtent) * 100)
         .round()
         .clamp(5, 100);
 
-    if ((pct - _lastSentPercent).abs() < 8) {
-      return;
-    }
+    if ((pct - _lastSentPercent).abs() < 8) return;
     _lastSentPercent = pct;
 
     final section = pct < 35
@@ -167,9 +154,7 @@ class _EducationMaterialDetailPageState
       material.id,
       isFavorite: target,
     );
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     if (ok) {
       setState(() {
         _detail = _detail?.copyWith(isFavorite: target);
@@ -178,36 +163,24 @@ class _EducationMaterialDetailPageState
   }
 
   Future<void> _toggleComplete(EducationMaterialItem material) async {
-    if (_togglingCompletion) {
-      return;
-    }
-    setState(() {
-      _togglingCompletion = true;
-    });
+    if (_togglingCompletion) return;
+    setState(() => _togglingCompletion = true);
 
     try {
       final msg = await _service.toggleMaterialCompletion(material.id);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       final updated = _service.findMaterialBySlugOrId(_currentSlugOrId);
       setState(() {
-        _detail = updated ?? _detail?.copyWith(isCompleted: !material.isCompleted);
+        _detail =
+            updated ?? _detail?.copyWith(isCompleted: !material.isCompleted);
         _togglingCompletion = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          backgroundColor: SiagaColors.safe,
-        ),
+        SnackBar(content: Text(msg), backgroundColor: SiagaColors.safe),
       );
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _togglingCompletion = false;
-      });
+      if (!mounted) return;
+      setState(() => _togglingCompletion = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
@@ -228,11 +201,7 @@ class _EducationMaterialDetailPageState
         if (_loadingDetail && material == null) {
           return Scaffold(
             backgroundColor: SiagaColors.background,
-            appBar: AppBar(
-              backgroundColor: SiagaColors.navy,
-              foregroundColor: Colors.white,
-              title: const Text('Memuat Materi...'),
-            ),
+            appBar: AppBar(title: const Text('Memuat Materi')),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -240,28 +209,19 @@ class _EducationMaterialDetailPageState
         if (material == null) {
           return Scaffold(
             backgroundColor: SiagaColors.background,
-            appBar: AppBar(
-              backgroundColor: SiagaColors.navy,
-              foregroundColor: Colors.white,
-              title: const Text('Detail Materi'),
-            ),
+            appBar: AppBar(title: const Text('Detail Materi')),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _errorMessage ?? 'Materi tidak ditemukan.',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _loadRemoteDetail,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Coba Muat Ulang'),
-                    ),
-                  ],
+                child: SiagaEmptyState(
+                  icon: Icons.menu_book_outlined,
+                  title: 'Materi tidak ditemukan',
+                  message: _errorMessage ?? 'Materi yang diminta belum tersedia.',
+                  action: FilledButton.icon(
+                    onPressed: _loadRemoteDetail,
+                    icon: const Icon(Icons.refresh_rounded, size: 17),
+                    label: const Text('Coba Muat Ulang'),
+                  ),
                 ),
               ),
             ),
@@ -269,17 +229,14 @@ class _EducationMaterialDetailPageState
         }
 
         final isGempa = material.category == 'Gempa Bumi';
-        final accentColor = isGempa ? SiagaColors.warning : SiagaColors.info;
+        final accentTone = isGempa ? SiagaTone.warning : SiagaTone.info;
+        final width = MediaQuery.sizeOf(context).width;
+        final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
 
         return Scaffold(
           backgroundColor: SiagaColors.background,
           appBar: AppBar(
-            backgroundColor: SiagaColors.navy,
-            foregroundColor: Colors.white,
-            title: Text(
-              'Materi ${material.category}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            title: Text('Materi ${material.category}'),
             actions: [
               IconButton(
                 tooltip: material.isFavorite
@@ -291,131 +248,115 @@ class _EducationMaterialDetailPageState
                       ? Icons.star_rounded
                       : Icons.star_outline_rounded,
                   color: material.isFavorite
-                      ? const Color(0xFFFBBF24)
-                      : Colors.white,
+                      ? SiagaColors.warning
+                      : SiagaColors.muted,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
             ],
           ),
           body: SingleChildScrollView(
             controller: _scrollController,
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              22,
+              horizontalPadding,
+              48,
+            ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 920),
+                constraints: const BoxConstraints(maxWidth: 840),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_loadingDetail) const LinearProgressIndicator(),
+                    if (_loadingDetail) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 12),
+                    ],
                     _buildSyncStatusBanner(),
                     if (material.lastPosition > 8 && !material.isCompleted) ...[
                       const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF9C3),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFDE047)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.bookmark_added_outlined,
-                              color: Color(0xFFA16207),
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Melanjutkan dari posisi terakhir (${material.lastPosition}% selesai dibaca).',
-                                style: const TextStyle(
-                                  color: Color(0xFF854D0E),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      SiagaNotice(
+                        title: 'Melanjutkan bacaan',
+                        message:
+                            'Posisi terakhir Anda tersimpan pada ${material.lastPosition}% dari materi ini.',
+                        tone: SiagaTone.warning,
+                        icon: Icons.bookmark_added_outlined,
                       ),
                     ],
                     const SizedBox(height: 12),
+
+                    // Article Header
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _buildBadge(
-                          material.category,
-                          isGempa
-                              ? const Color(0xFFFEF3C7)
-                              : const Color(0xFFE0F2FE),
-                          isGempa
-                              ? const Color(0xFFB45309)
-                              : const Color(0xFF0369A1),
+                        SiagaBadge(
+                          label: material.category,
+                          tone: accentTone,
+                          icon: isGempa
+                              ? Icons.vibration_rounded
+                              : Icons.waves_rounded,
+                          compact: true,
                         ),
-                        _buildBadge(
-                          'Tingkat: ${material.difficulty}',
-                          const Color(0xFFF1F5F9),
-                          SiagaColors.textDark,
+                        SiagaBadge(
+                          label: 'Tingkat: ${material.difficulty}',
+                          tone: SiagaTone.neutral,
+                          compact: true,
                         ),
                         if (material.isCompleted)
-                          _buildBadge(
-                            '✓ Selesai Dipelajari',
-                            const Color(0xFFDCFCE7),
-                            SiagaColors.safe,
+                          const SiagaBadge(
+                            label: 'Selesai Dipelajari',
+                            tone: SiagaTone.success,
+                            icon: Icons.check_circle_outline_rounded,
+                            compact: true,
                           ),
                         if (material.isFavorite)
-                          _buildBadge(
-                            '★ Favorit',
-                            const Color(0xFFFEF3C7),
-                            const Color(0xFFB45309),
+                          const SiagaBadge(
+                            label: 'Favorit',
+                            tone: SiagaTone.warning,
+                            icon: Icons.star_rounded,
+                            compact: true,
                           ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     Text(
                       material.title,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(context).textTheme.headlineLarge,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Ilustrasi & Ringkasan Inti
+                    // Clean Architectural Summary Callout
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isGempa
-                              ? const [SiagaColors.navy, Color(0xFFB45309)]
-                              : const [Color(0xFF0369A1), SiagaColors.navy],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
+                        color: SiagaColors.navy,
+                        borderRadius: BorderRadius.circular(SiagaRadius.lg),
                       ),
+                      padding: const EdgeInsets.all(22),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(14),
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(14),
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(
+                                SiagaRadius.md,
+                              ),
                             ),
                             child: Icon(
                               isGempa
                                   ? Icons.vibration_rounded
                                   : Icons.waves_rounded,
                               color: Colors.white,
-                              size: 36,
+                              size: 24,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,10 +364,10 @@ class _EducationMaterialDetailPageState
                                 const Text(
                                   'RINGKASAN MATERI',
                                   style: TextStyle(
-                                    color: Color(0xFFE2E8F0),
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
+                                    color: Color(0xFF93C5FD),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -435,7 +376,7 @@ class _EducationMaterialDetailPageState
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14.5,
-                                    height: 1.55,
+                                    height: 1.6,
                                   ),
                                 ),
                               ],
@@ -446,99 +387,86 @@ class _EducationMaterialDetailPageState
                     ),
                     const SizedBox(height: 20),
 
-                    // Penjelasan Materi
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: SiagaColors.border),
-                      ),
+                    // Main Reading Surface
+                    SiagaCard(
+                      padding: EdgeInsets.all(width < 600 ? 20 : 28),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Penjelasan Materi',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: SiagaColors.navy,
-                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: SiagaColors.navy),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             material.content,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              height: 1.7,
-                              color: SiagaColors.textDark,
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: SiagaColors.ink,
+                                  fontSize: 15.5,
+                                  height: 1.78,
+                                ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    if (material.keyPoints.isNotEmpty)
-                      _buildListCard(
+                    if (material.keyPoints.isNotEmpty) ...[
+                      _buildStructuredListCard(
                         title: 'Poin Penting',
-                        icon: Icons.push_pin_rounded,
-                        bgColor: const Color(0xFFEFF6FF),
-                        borderColor: const Color(0xFFBFDBFE),
-                        titleColor: SiagaColors.navy,
+                        icon: Icons.push_pin_outlined,
+                        tone: SiagaTone.info,
                         items: material.keyPoints,
                       ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
+                    ],
 
-                    if (material.actionSteps.isNotEmpty)
-                      _buildListCard(
+                    if (material.actionSteps.isNotEmpty) ...[
+                      _buildStructuredListCard(
                         title: 'Langkah yang Harus Dilakukan',
-                        icon: Icons.check_circle_rounded,
-                        bgColor: const Color(0xFFF0FDF4),
-                        borderColor: const Color(0xFFBBF7D0),
-                        titleColor: SiagaColors.safe,
+                        icon: Icons.check_circle_outline_rounded,
+                        tone: SiagaTone.success,
                         items: material.actionSteps,
                         numbered: true,
                       ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
+                    ],
 
-                    if (material.thingsToAvoid.isNotEmpty)
-                      _buildListCard(
+                    if (material.thingsToAvoid.isNotEmpty) ...[
+                      _buildStructuredListCard(
                         title: 'Hal yang Harus Dihindari',
                         icon: Icons.warning_amber_rounded,
-                        bgColor: const Color(0xFFFEF2F2),
-                        borderColor: const Color(0xFFFECACA),
-                        titleColor: SiagaColors.danger,
+                        tone: SiagaTone.danger,
                         items: material.thingsToAvoid,
                       ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
+                    // Verified Reference Attribution
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(15),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
+                        color: SiagaColors.surface,
+                        borderRadius: BorderRadius.circular(SiagaRadius.md),
                         border: Border.all(color: SiagaColors.border),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.verified_outlined,
-                            color: accentColor,
-                            size: 20,
+                            color: accentTone.accent,
+                            size: 19,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Sumber Referensi Resmi: ${material.sourceReference}\nCatatan: Informasi edukasi bukan pengganti instruksi petugas resmi saat bencana berlangsung.',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: SiagaColors.textMuted,
-                                height: 1.5,
-                              ),
+                              'Sumber Referensi Resmi: ${material.sourceReference}\nCatatan: Informasi edukasi tidak menggantikan instruksi petugas resmi saat bencana berlangsung.',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(height: 1.5),
                             ),
                           ),
                         ],
@@ -546,24 +474,22 @@ class _EducationMaterialDetailPageState
                     ),
                     const SizedBox(height: 22),
 
+                    // Primary Completion Action
                     SizedBox(
                       width: double.infinity,
+                      height: 48,
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
                           backgroundColor: material.isCompleted
                               ? SiagaColors.safe
                               : SiagaColors.navy,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
                         ),
                         onPressed: _togglingCompletion
                             ? null
                             : () => unawaited(_toggleComplete(material)),
                         icon: _togglingCompletion
                             ? const SizedBox.square(
-                                dimension: 18,
+                                dimension: 17,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: Colors.white,
@@ -573,6 +499,7 @@ class _EducationMaterialDetailPageState
                                 material.isCompleted
                                     ? Icons.check_circle_rounded
                                     : Icons.task_alt_rounded,
+                                size: 19,
                               ),
                         label: Text(
                           _togglingCompletion
@@ -580,15 +507,12 @@ class _EducationMaterialDetailPageState
                               : material.isCompleted
                               ? 'Sudah Ditandai Selesai (Ketuk untuk Batalkan)'
                               : 'Tandai Materi Ini Selesai (+25 Poin)',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
+                    // Prev / Next Lesson Navigation
                     Row(
                       children: [
                         if (material.previousMaterial != null)
@@ -597,7 +521,10 @@ class _EducationMaterialDetailPageState
                               onPressed: () => _navigateToSibling(
                                 material.previousMaterial!.slug,
                               ),
-                              icon: const Icon(Icons.arrow_back_rounded),
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                size: 17,
+                              ),
                               label: Text(
                                 'Sebelumnya: ${material.previousMaterial!.title}',
                                 maxLines: 1,
@@ -614,7 +541,14 @@ class _EducationMaterialDetailPageState
                               onPressed: () => _navigateToSibling(
                                 material.nextMaterial!.slug,
                               ),
-                              icon: const Icon(Icons.arrow_forward_rounded),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: SiagaColors.primarySoft,
+                                foregroundColor: SiagaColors.navy,
+                              ),
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 17,
+                              ),
                               label: Text(
                                 'Berikutnya: ${material.nextMaterial!.title}',
                                 maxLines: 1,
@@ -624,7 +558,6 @@ class _EducationMaterialDetailPageState
                           ),
                       ],
                     ),
-                    const SizedBox(height: 28),
                   ],
                 ),
               ),
@@ -641,133 +574,109 @@ class _EducationMaterialDetailPageState
       return const SizedBox.shrink();
     }
 
-    final (Color bg, Color fg, IconData icon) = switch (status) {
-      SaveSyncStatus.saving => (
-        const Color(0xFFEFF6FF),
-        SiagaColors.navy,
-        Icons.sync_rounded,
-      ),
-      SaveSyncStatus.saved => (
-        const Color(0xFFDCFCE7),
-        SiagaColors.safe,
-        Icons.cloud_done_outlined,
-      ),
-      SaveSyncStatus.error => (
-        const Color(0xFFFEF2F2),
-        SiagaColors.danger,
-        Icons.cloud_off_rounded,
-      ),
-      SaveSyncStatus.idle => (Colors.transparent, Colors.transparent, Icons.info),
+    final tone = switch (status) {
+      SaveSyncStatus.saving => SiagaTone.info,
+      SaveSyncStatus.saved => SiagaTone.success,
+      SaveSyncStatus.error => SiagaTone.danger,
+      SaveSyncStatus.idle => SiagaTone.neutral,
+    };
+    final icon = switch (status) {
+      SaveSyncStatus.saving => Icons.sync_rounded,
+      SaveSyncStatus.saved => Icons.cloud_done_outlined,
+      SaveSyncStatus.error => Icons.cloud_off_rounded,
+      SaveSyncStatus.idle => Icons.info_outline_rounded,
     };
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: fg),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _service.saveStatusMessage ?? '',
-              style: TextStyle(
-                color: fg,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          if (status == SaveSyncStatus.error && _service.hasPendingRetry)
-            TextButton(
+    return SiagaNotice(
+      title: status == SaveSyncStatus.saved
+          ? 'Posisi baca tersimpan'
+          : status == SaveSyncStatus.saving
+          ? 'Menyimpan progres baca'
+          : 'Gagal menyimpan',
+      message: _service.saveStatusMessage ?? '',
+      tone: tone,
+      icon: icon,
+      trailing: status == SaveSyncStatus.error && _service.hasPendingRetry
+          ? TextButton(
               onPressed: () => unawaited(_service.retryLastSave()),
               child: const Text('Coba Lagi'),
-            ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 
-  Widget _buildBadge(String text, Color bg, Color fg) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 12.5, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-
-  Widget _buildListCard({
+  Widget _buildStructuredListCard({
     required String title,
     required IconData icon,
-    required Color bgColor,
-    required Color borderColor,
-    required Color titleColor,
+    required SiagaTone tone,
     required List<String> items,
     bool numbered = false,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
+        color: SiagaColors.surface,
+        borderRadius: BorderRadius.circular(SiagaRadius.lg),
+        border: Border.all(color: tone.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: titleColor, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: titleColor,
-                ),
-              ),
-            ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(SiagaRadius.lg - 1),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: tone.accent, width: 3.5)),
           ),
-          const SizedBox(height: 10),
-          for (int i = 0; i < items.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    numbered ? '${i + 1}. ' : '• ',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: titleColor,
-                    ),
-                  ),
+                  Icon(icon, color: tone.accent, size: 19),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      items[i],
-                      style: const TextStyle(
-                        fontSize: 14.2,
-                        height: 1.5,
-                        color: SiagaColors.textDark,
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: tone.foreground,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-        ],
+              const SizedBox(height: 12),
+              for (int i = 0; i < items.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: numbered ? 22 : 16,
+                        child: Text(
+                          numbered ? '${i + 1}.' : '•',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: tone.accent,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          items[i],
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: SiagaColors.ink,
+                                height: 1.55,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

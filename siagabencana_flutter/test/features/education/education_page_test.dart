@@ -69,13 +69,6 @@ void main() {
           );
         }
 
-        if (path == '/api/peringatan-bencana') {
-          return http.Response(
-            jsonEncode({'success': true, 'source': 'BMKG', 'alerts': []}),
-            200,
-          );
-        }
-
         if (request.url.host == 'api.open-meteo.com') {
           return http.Response(
             jsonEncode({

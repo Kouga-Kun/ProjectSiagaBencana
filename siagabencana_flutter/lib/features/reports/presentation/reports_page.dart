@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/network/api_config.dart';
+import '../../../app/siaga_theme.dart';
 import '../../../app/widgets/siaga_components.dart';
 import '../../auth/data/auth_session_service.dart';
 import '../data/reports_data_service.dart';
@@ -13,6 +14,7 @@ class ReportsPage extends StatefulWidget {
     this.user,
     this.isAuthLoading = false,
     this.dataService,
+    this.onOpenLogin,
     super.key,
   });
 
@@ -20,6 +22,7 @@ class ReportsPage extends StatefulWidget {
   final AuthUser? user;
   final bool isAuthLoading;
   final ReportsDataService? dataService;
+  final VoidCallback? onOpenLogin;
 
   @override
   State<ReportsPage> createState() => _ReportsPageState();
@@ -42,6 +45,7 @@ class _ReportsPageState extends State<ReportsPage> {
   String _district = '';
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _showFilters = false;
 
   bool _showCreateForm = false;
   bool _submitting = false;
@@ -94,6 +98,19 @@ class _ReportsPageState extends State<ReportsPage> {
     super.dispose();
   }
 
+  int get _activeFilterCount {
+    var count = 0;
+    if (_disasterType.isNotEmpty) count++;
+    if (_status.isNotEmpty) count++;
+    if (_sourceType.isNotEmpty) count++;
+    if (_province.isNotEmpty) count++;
+    if (_city.isNotEmpty) count++;
+    if (_district.isNotEmpty) count++;
+    if (_startDate != null) count++;
+    if (_endDate != null) count++;
+    return count;
+  }
+
   Future<void> _loadReports({int? page}) async {
     setState(() {
       _loading = true;
@@ -114,9 +131,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
     try {
       final result = await _service.loadReports(page: _page, filters: filters);
-
       if (!mounted) return;
-
       setState(() {
         _result = result;
         _loading = false;
@@ -273,18 +288,36 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = MediaQuery.sizeOf(context).width < 600 ? 18.0 : 30.0;
+    final width = MediaQuery.sizeOf(context).width;
+    final padding = SiagaBreakpoints.pageHorizontalPadding(width);
     final isLoggedIn = !widget.isAuthLoading && widget.user != null;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(padding, 28, padding, 44),
+      padding: EdgeInsets.fromLTRB(padding, 24, padding, 44),
       children: [
-        const SiagaPageHeader(
-          eyebrow: 'LAPORAN MASYARAKAT',
+        SiagaPageHeader(
+          eyebrow: 'PELAPORAN & VERIFIKASI',
           title: 'Laporan dan riwayat bencana',
           description:
-              'Pantau laporan kejadian, wilayah terdampak, dan status verifikasi dari server Laravel.',
+              'Laporkan kejadian bencana di sekitar Anda dan pantau status verifikasi resmi oleh petugas.',
           icon: Icons.assignment_outlined,
+          trailing: isLoggedIn
+              ? FilledButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showCreateForm = !_showCreateForm;
+                      _submitError = null;
+                    });
+                  },
+                  icon: Icon(
+                    _showCreateForm ? Icons.close_rounded : Icons.add_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _showCreateForm ? 'Tutup form' : '+ Buat laporan',
+                  ),
+                )
+              : null,
         ),
         const SizedBox(height: 18),
         if (widget.isAuthLoading) ...[
@@ -296,31 +329,22 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           const SizedBox(height: 18),
         ] else if (!isLoggedIn) ...[
-          const SiagaNotice(
+          SiagaNotice(
             title: 'Login diperlukan untuk menambahkan laporan',
             message:
-                'Silakan login terlebih dahulu melalui halaman Profil jika Anda ingin menambahkan laporan bencana.',
+                'Silakan login terlebih dahulu jika Anda ingin mengirimkan laporan kejadian bencana.',
             tone: SiagaTone.warning,
             icon: Icons.lock_outline_rounded,
-          ),
-          const SizedBox(height: 18),
-        ] else ...[
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: () {
-                setState(() {
-                  _showCreateForm = !_showCreateForm;
-                  _submitError = null;
-                });
-              },
-              icon: Icon(
-                _showCreateForm ? Icons.close_rounded : Icons.add_rounded,
-              ),
-              label: Text(
-                _showCreateForm ? 'Tutup form' : '+ Buat laporan',
-              ),
-            ),
+            trailing: widget.onOpenLogin != null
+                ? OutlinedButton(
+                    onPressed: widget.onOpenLogin,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                    ),
+                    child: const Text('Masuk'),
+                  )
+                : null,
           ),
           const SizedBox(height: 18),
         ],
@@ -335,64 +359,205 @@ class _ReportsPageState extends State<ReportsPage> {
         ],
         if (isLoggedIn && _showCreateForm) ...[
           _buildCreateReportCard(),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
         ],
-        if (_loading)
-          const LinearProgressIndicator()
-        else if (_error != null)
-          SiagaNotice(
-            title: 'Gagal memuat laporan',
-            message: _error!,
-            tone: SiagaTone.danger,
-            icon: Icons.cloud_off_outlined,
-          )
-        else
-          SiagaNotice(
-            title: 'Data berhasil dimuat',
-            message: '${_reports.length} laporan ditampilkan pada halaman ini.',
-            tone: SiagaTone.success,
-            icon: Icons.cloud_done_outlined,
-          ),
-        const SizedBox(height: 22),
-        const SiagaSectionHeader(
-          title: 'Ringkasan laporan',
-          subtitle: 'Statistik yang dikirim oleh API Laravel.',
-        ),
-        const SizedBox(height: 14),
+
+        // Operational KPI strip
         SiagaResponsiveGrid(
-          minimumItemWidth: 190,
+          minimumItemWidth: 200,
+          spacing: 14,
           children: [
-            _StatCard(
-              title: 'Total laporan',
-              value: _stats['total_reports'] ?? 0,
-              icon: Icons.assignment_rounded,
+            SiagaMetricTile(
+              label: 'Total laporan',
+              value: '${_stats['total_reports'] ?? 0}',
+              icon: Icons.assignment_outlined,
+              tone: SiagaTone.info,
             ),
-            _StatCard(
-              title: 'Jenis bencana',
-              value: _stats['disaster_type_count'] ?? 0,
+            SiagaMetricTile(
+              label: 'Jenis bencana',
+              value: '${_stats['disaster_type_count'] ?? 0}',
               icon: Icons.category_outlined,
+              tone: SiagaTone.neutral,
             ),
-            _StatCard(
-              title: 'Wilayah terdampak',
-              value: _stats['affected_area_count'] ?? 0,
+            SiagaMetricTile(
+              label: 'Wilayah terdampak',
+              value: '${_stats['affected_area_count'] ?? 0}',
               icon: Icons.location_on_outlined,
+              tone: SiagaTone.info,
             ),
-            _StatCard(
-              title: 'Menunggu verifikasi',
-              value: _stats['pending_reports'] ?? 0,
+            SiagaMetricTile(
+              label: 'Menunggu verifikasi',
+              value: '${_stats['pending_reports'] ?? 0}',
               icon: Icons.pending_actions_rounded,
+              tone: SiagaTone.warning,
             ),
           ],
         ),
-        const SizedBox(height: 28),
-        const SiagaSectionHeader(
-          title: 'Filter laporan',
-          subtitle: 'Pilih kriteria untuk mempersempit daftar laporan.',
+        const SizedBox(height: 24),
+
+        // Registry Header + Filter Toggle
+        SiagaSectionHeader(
+          title: 'Daftar laporan bencana',
+          subtitle: _loading
+              ? 'Memuat daftar laporan terbaru...'
+              : 'Menampilkan ${_reports.length} laporan pada halaman ${_result['current_page'] ?? 1}.',
+          action: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _showFilters = !_showFilters),
+                icon: Icon(
+                  _showFilters
+                      ? Icons.filter_list_off_rounded
+                      : Icons.filter_list_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  _activeFilterCount > 0
+                      ? 'Filter ($_activeFilterCount)'
+                      : 'Filter',
+                ),
+              ),
+              IconButton(
+                tooltip: 'Muat ulang',
+                onPressed: _loading ? null : () => _loadReports(),
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 14),
-        SiagaCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        if (_showFilters) ...[
+          const SizedBox(height: 14),
+          _buildFilterPanel(),
+        ],
+        const SizedBox(height: 16),
+
+        if (_loading)
+          Column(
+            children: List.generate(
+              3,
+              (_) => const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: SiagaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SiagaSkeletonBox(height: 14, width: 180),
+                      SizedBox(height: 10),
+                      SiagaSkeletonBox(height: 18),
+                      SizedBox(height: 8),
+                      SiagaSkeletonBox(height: 13, width: 260),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        else if (_error != null)
+          SiagaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SiagaNotice(
+                  title: 'Gagal memuat laporan',
+                  message: _error!,
+                  tone: SiagaTone.danger,
+                  icon: Icons.cloud_off_outlined,
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => _loadReports(),
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: const Text('Coba lagi'),
+                ),
+              ],
+            ),
+          )
+        else if (_reports.isEmpty)
+          SiagaEmptyState(
+            icon: Icons.assignment_outlined,
+            title: 'Tidak ada laporan ditemukan',
+            message: _activeFilterCount > 0
+                ? 'Tidak ada laporan yang cocok dengan kriteria filter saat ini.'
+                : 'Belum ada laporan bencana yang tercatat pada sistem.',
+            action: _activeFilterCount > 0
+                ? OutlinedButton(
+                    onPressed: _resetFilters,
+                    child: const Text('Reset filter'),
+                  )
+                : null,
+          )
+        else
+          ..._reports.map(_buildReportCard),
+
+        if (_result.isNotEmpty && !_loading && _error == null) ...[
+          const SizedBox(height: 12),
+          SiagaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Halaman ${_result['current_page'] ?? 1} dari ${_result['last_page'] ?? 1}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: SiagaColors.ink,
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Halaman sebelumnya',
+                      onPressed: _loading || _page <= 1
+                          ? null
+                          : () => _loadReports(page: _page - 1),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    IconButton(
+                      tooltip: 'Halaman berikutnya',
+                      onPressed:
+                          _loading ||
+                              _page >=
+                                  ((_result['last_page'] as num?)?.toInt() ?? 1)
+                          ? null
+                          : () => _loadReports(page: _page + 1),
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _disasterType = '';
+      _status = '';
+      _sourceType = '';
+      _province = '';
+      _city = '';
+      _district = '';
+      _startDate = null;
+      _endDate = null;
+    });
+    unawaited(_loadReports(page: 1));
+  }
+
+  Widget _buildFilterPanel() {
+    return SiagaCard(
+      backgroundColor: SiagaColors.surfaceSubtle,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SiagaResponsiveGrid(
+            minimumItemWidth: 230,
+            spacing: 12,
             children: [
               _dropdown(
                 label: 'Jenis bencana',
@@ -400,7 +565,6 @@ class _ReportsPageState extends State<ReportsPage> {
                 options: _listOption('disaster_types'),
                 onChanged: (v) => setState(() => _disasterType = v),
               ),
-              const SizedBox(height: 14),
               _dropdown(
                 label: 'Status verifikasi',
                 value: _status,
@@ -411,7 +575,6 @@ class _ReportsPageState extends State<ReportsPage> {
                 },
                 onChanged: (v) => setState(() => _status = v),
               ),
-              const SizedBox(height: 14),
               _dropdown(
                 label: 'Sumber laporan',
                 value: _sourceType,
@@ -422,255 +585,206 @@ class _ReportsPageState extends State<ReportsPage> {
                 },
                 onChanged: (v) => setState(() => _sourceType = v),
               ),
-              const SizedBox(height: 14),
               _dropdown(
                 label: 'Provinsi',
                 value: _province,
                 options: _listOption('provinces'),
                 onChanged: (v) => setState(() => _province = v),
               ),
-              const SizedBox(height: 14),
               _dropdown(
                 label: 'Kabupaten/kota',
                 value: _city,
                 options: _listOption('cities'),
                 onChanged: (v) => setState(() => _city = v),
               ),
-              const SizedBox(height: 14),
               _dropdown(
                 label: 'Kecamatan',
                 value: _district,
                 options: _listOption('districts'),
                 onChanged: (v) => setState(() => _district = v),
               ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _pickDate(isStart: true),
-                    icon: const Icon(Icons.calendar_today_outlined),
-                    label: Text(
-                      _startDate == null
-                          ? 'Tanggal mulai'
-                          : _dateString(_startDate!),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _pickDate(isStart: false),
-                    icon: const Icon(Icons.event_outlined),
-                    label: Text(
-                      _endDate == null
-                          ? 'Tanggal akhir'
-                          : _dateString(_endDate!),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _loading ? null : () => _loadReports(page: 1),
-                    icon: const Icon(Icons.search_rounded),
-                    label: const Text('Terapkan filter'),
-                  ),
-                  OutlinedButton(
-                    onPressed: _loading
-                        ? null
-                        : () {
-                            setState(() {
-                              _disasterType = '';
-                              _status = '';
-                              _sourceType = '';
-                              _province = '';
-                              _city = '';
-                              _district = '';
-                              _startDate = null;
-                              _endDate = null;
-                            });
-                            unawaited(_loadReports(page: 1));
-                          },
-                    child: const Text('Reset'),
-                  ),
-                ],
-              ),
             ],
           ),
-        ),
-        const SizedBox(height: 28),
-        SiagaSectionHeader(
-          title: 'Daftar laporan bencana',
-          subtitle: 'Laporan terbaru dari database.',
-          action: IconButton(
-            tooltip: 'Muat ulang',
-            onPressed: _loading ? null : () => _loadReports(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ),
-        const SizedBox(height: 14),
-        if (_error != null)
-          SiagaCard(
-            child: FilledButton.icon(
-              onPressed: () => _loadReports(),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Coba lagi'),
-            ),
-          )
-        else if (!_loading && _reports.isEmpty)
-          const SiagaCard(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(
-                child: Text('Tidak ada laporan yang cocok dengan filter.'),
-              ),
-            ),
-          )
-        else
-          ..._reports.map(_buildReportCard),
-        if (_result.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                'Halaman ${_result['current_page'] ?? 1} '
-                'dari ${_result['last_page'] ?? 1}',
+              OutlinedButton.icon(
+                onPressed: () => _pickDate(isStart: true),
+                icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                label: Text(
+                  _startDate == null
+                      ? 'Tanggal mulai'
+                      : _dateString(_startDate!),
+                ),
               ),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Halaman sebelumnya',
-                    onPressed: _loading || _page <= 1
-                        ? null
-                        : () => _loadReports(page: _page - 1),
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                  IconButton(
-                    tooltip: 'Halaman berikutnya',
-                    onPressed:
-                        _loading ||
-                            _page >=
-                                ((_result['last_page'] as num?)?.toInt() ?? 1)
-                        ? null
-                        : () => _loadReports(page: _page + 1),
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () => _pickDate(isStart: false),
+                icon: const Icon(Icons.event_outlined, size: 16),
+                label: Text(
+                  _endDate == null ? 'Tanggal akhir' : _dateString(_endDate!),
+                ),
               ),
+              FilledButton.icon(
+                onPressed: _loading ? null : () => _loadReports(page: 1),
+                icon: const Icon(Icons.search_rounded, size: 17),
+                label: const Text('Terapkan filter'),
+              ),
+              if (_activeFilterCount > 0)
+                TextButton(
+                  onPressed: _loading ? null : _resetFilters,
+                  child: const Text('Reset'),
+                ),
             ],
           ),
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildCreateReportCard() {
     return SiagaCard(
+      padding: const EdgeInsets.all(24),
+      borderColor: SiagaColors.primaryBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Buat laporan bencana',
-            style: Theme.of(context).textTheme.headlineMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Buat laporan bencana',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Lengkapi informasi kejadian yang Anda ketahui. Minimal satu kolom informasi wajib diisi.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Tutup form',
+                onPressed: () => setState(() => _showCreateForm = false),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Isi informasi yang kamu ketahui. Semua bagian boleh dikosongkan '
-            'kecuali minimal satu informasi kejadian.',
-            style: Theme.of(context).textTheme.bodyMedium,
+          const SizedBox(height: 20),
+          const _FormGroupTitle(
+            step: '1',
+            title: 'Informasi Kejadian',
           ),
-          const SizedBox(height: 18),
-          TextFormField(
-            controller: _createDisasterTypeController,
-            maxLength: 100,
-            decoration: const InputDecoration(
-              labelText: 'Jenis bencana (opsional)',
-              border: OutlineInputBorder(),
-              counterText: '',
-            ),
+          const SizedBox(height: 12),
+          SiagaResponsiveGrid(
+            minimumItemWidth: 280,
+            spacing: 14,
+            children: [
+              TextFormField(
+                controller: _createDisasterTypeController,
+                maxLength: 100,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis bencana (opsional)',
+                  hintText: 'Contoh: Gempa Bumi, Banjir, Longsor',
+                  counterText: '',
+                ),
+              ),
+              TextFormField(
+                controller: _createOccurredAtController,
+                readOnly: true,
+                onTap: _pickOccurredDateTime,
+                decoration: InputDecoration(
+                  labelText: 'Tanggal dan waktu kejadian',
+                  hintText: 'Pilih tanggal dan waktu',
+                  suffixIcon: _createOccurredAt != null
+                      ? IconButton(
+                          tooltip: 'Hapus waktu kejadian',
+                          onPressed: () {
+                            setState(() {
+                              _createOccurredAt = null;
+                              _createOccurredAtController.clear();
+                            });
+                          },
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                        )
+                      : const Icon(Icons.calendar_month_outlined, size: 19),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _createOccurredAtController,
-            readOnly: true,
-            onTap: _pickOccurredDateTime,
-            decoration: InputDecoration(
-              labelText: 'Tanggal dan waktu kejadian',
-              border: const OutlineInputBorder(),
-              suffixIcon: _createOccurredAt != null
-                  ? IconButton(
-                      tooltip: 'Hapus waktu kejadian',
-                      onPressed: () {
-                        setState(() {
-                          _createOccurredAt = null;
-                          _createOccurredAtController.clear();
-                        });
-                      },
-                      icon: const Icon(Icons.clear_rounded),
-                    )
-                  : const Icon(Icons.calendar_month_outlined),
-            ),
+          const SizedBox(height: 20),
+          const _FormGroupTitle(
+            step: '2',
+            title: 'Lokasi Wilayah Terdampak',
           ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _createProvinceController,
-            maxLength: 120,
-            decoration: const InputDecoration(
-              labelText: 'Provinsi',
-              border: OutlineInputBorder(),
-              counterText: '',
-            ),
+          const SizedBox(height: 12),
+          SiagaResponsiveGrid(
+            minimumItemWidth: 240,
+            spacing: 14,
+            children: [
+              TextFormField(
+                controller: _createProvinceController,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Provinsi',
+                  hintText: 'Sumatera Barat',
+                  counterText: '',
+                ),
+              ),
+              TextFormField(
+                controller: _createCityController,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Kota/kabupaten',
+                  hintText: 'Kota Padang',
+                  counterText: '',
+                ),
+              ),
+              TextFormField(
+                controller: _createDistrictController,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Kecamatan',
+                  counterText: '',
+                ),
+              ),
+              TextFormField(
+                controller: _createAffectedAreaController,
+                maxLength: 180,
+                decoration: const InputDecoration(
+                  labelText: 'Lokasi / alamat spesifik',
+                  counterText: '',
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _createCityController,
-            maxLength: 120,
-            decoration: const InputDecoration(
-              labelText: 'Kota/kabupaten',
-              border: OutlineInputBorder(),
-              counterText: '',
-            ),
+          const SizedBox(height: 20),
+          const _FormGroupTitle(
+            step: '3',
+            title: 'Deskripsi & Kronologi',
           ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _createDistrictController,
-            maxLength: 120,
-            decoration: const InputDecoration(
-              labelText: 'Kecamatan',
-              border: OutlineInputBorder(),
-              counterText: '',
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _createAffectedAreaController,
-            maxLength: 180,
-            decoration: const InputDecoration(
-              labelText: 'Lokasi/wilayah terdampak',
-              border: OutlineInputBorder(),
-              counterText: '',
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _createDescriptionController,
             maxLines: 4,
             maxLength: 10000,
             decoration: const InputDecoration(
               labelText: 'Deskripsi kejadian (opsional)',
-              border: OutlineInputBorder(),
+              hintText: 'Jelaskan kondisi di lokasi, dampak, atau kebutuhan mendesak...',
               alignLabelWithHint: true,
               counterText: '',
             ),
           ),
           if (_submitError != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             SiagaNotice(
-              title: 'Periksa kembali data yang dimasukkan.',
+              title: 'Periksa kembali data yang dimasukkan',
               message: _submitError!,
               tone: SiagaTone.danger,
               icon: Icons.error_outline_rounded,
@@ -678,8 +792,8 @@ class _ReportsPageState extends State<ReportsPage> {
           ],
           const SizedBox(height: 14),
           Text(
-            'Laporan baru dan laporan yang diubah akan berstatus menunggu verifikasi.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            'Laporan baru akan berstatus "Menunggu verifikasi" hingga diperiksa oleh petugas SiagaBencana.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -690,10 +804,13 @@ class _ReportsPageState extends State<ReportsPage> {
                 onPressed: _submitting ? null : _submitReport,
                 icon: _submitting
                     ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        dimension: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Icon(Icons.save_outlined),
+                    : const Icon(Icons.send_rounded, size: 17),
                 label: Text(_submitting ? 'Menyimpan...' : 'Simpan laporan'),
               ),
               OutlinedButton(
@@ -744,10 +861,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return DropdownButtonFormField<String>(
       initialValue: safeValue,
       isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: InputDecoration(labelText: label),
       items: entries,
       onChanged: (next) {
         if (next != null) onChanged(next);
@@ -784,14 +898,12 @@ class _ReportsPageState extends State<ReportsPage> {
     ].where((v) => v != null && v.toString().trim().isNotEmpty).join(', ');
 
     final status = _text(report['verification_status'], fallback: 'unknown');
-
     final statusLabel = switch (status) {
       'verified' => 'Terverifikasi',
       'rejected' => 'Ditolak',
       'pending' => 'Menunggu verifikasi',
       _ => status,
     };
-
     final tone = switch (status) {
       'verified' => SiagaTone.success,
       'rejected' => SiagaTone.danger,
@@ -803,114 +915,168 @@ class _ReportsPageState extends State<ReportsPage> {
     final verifier = report['verifier'];
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: SiagaCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: SiagaColors.surface,
+          borderRadius: BorderRadius.circular(SiagaRadius.lg),
+          border: Border.all(color: SiagaColors.border),
+          boxShadow: SiagaShadows.subtle,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(SiagaRadius.lg - 1),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: tone.accent, width: 3.5)),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SiagaBadge(
-                  label: _text(
-                    report['disaster_type'],
-                    fallback: 'Jenis bencana tidak tersedia',
-                  ),
-                  tone: SiagaTone.info,
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SiagaBadge(
+                          label: _text(
+                            report['disaster_type'],
+                            fallback: 'Kejadian Bencana',
+                          ),
+                          tone: SiagaTone.info,
+                          compact: true,
+                        ),
+                        SiagaStatusDot(label: statusLabel, tone: tone),
+                      ],
+                    ),
+                    Text(
+                      _date(report['occurred_at']),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                SiagaBadge(label: statusLabel, tone: tone),
+                const SizedBox(height: 10),
+                Text(
+                  _text(report['description'], fallback: 'Tanpa deskripsi'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 18,
+                  runSpacing: 8,
+                  children: [
+                    _metaItem(
+                      Icons.location_on_outlined,
+                      location.isEmpty ? 'Lokasi tidak tersedia' : location,
+                    ),
+                    _metaItem(
+                      Icons.source_outlined,
+                      'Sumber: ${_text(report['source_name'])}',
+                    ),
+                    if (submitter is Map)
+                      _metaItem(
+                        Icons.person_outline_rounded,
+                        'Pelapor: ${_text(submitter['name'])}',
+                      ),
+                    if (verifier is Map)
+                      _metaItem(
+                        Icons.verified_user_outlined,
+                        'Verifikator: ${_text(verifier['name'])}',
+                      ),
+                    if (report['verified_at'] != null)
+                      _metaItem(
+                        Icons.fact_check_outlined,
+                        'Diverifikasi: ${_date(report['verified_at'])}',
+                      ),
+                  ],
+                ),
+                if (report['source_url'] != null &&
+                    report['source_url'].toString().trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    'URL sumber: ${report['source_url']}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: SiagaColors.primaryBlue,
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              _text(report['description'], fallback: 'Tanpa deskripsi'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 10),
-            _detailRow(
-              Icons.location_on_outlined,
-              location.isEmpty ? 'Lokasi tidak tersedia' : location,
-            ),
-            const SizedBox(height: 7),
-            _detailRow(
-              Icons.calendar_month_outlined,
-              _date(report['occurred_at']),
-            ),
-            const SizedBox(height: 7),
-            _detailRow(
-              Icons.source_outlined,
-              'Sumber: ${_text(report['source_name'])}',
-            ),
-            if (submitter is Map) ...[
-              const SizedBox(height: 7),
-              _detailRow(
-                Icons.person_outline_rounded,
-                'Pelapor: ${_text(submitter['name'])}',
-              ),
-            ],
-            if (verifier is Map) ...[
-              const SizedBox(height: 7),
-              _detailRow(
-                Icons.verified_user_outlined,
-                'Diverifikasi oleh: ${_text(verifier['name'])}',
-              ),
-            ],
-            if (report['verified_at'] != null) ...[
-              const SizedBox(height: 7),
-              _detailRow(
-                Icons.fact_check_outlined,
-                'Waktu verifikasi: ${_date(report['verified_at'])}',
-              ),
-            ],
-            if (report['source_url'] != null &&
-                report['source_url'].toString().trim().isNotEmpty) ...[
-              const SizedBox(height: 7),
-              SelectableText('URL sumber: ${report['source_url']}'),
-            ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _detailRow(IconData icon, String value) {
+  Widget _metaItem(IconData icon, String value) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: Colors.blueGrey),
-        const SizedBox(width: 8),
-        Expanded(child: Text(value)),
+        Icon(icon, size: 15, color: SiagaColors.muted),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: SiagaColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
+class _FormGroupTitle extends StatelessWidget {
+  const _FormGroupTitle({required this.step, required this.title});
 
+  final String step;
   final String title;
-  final dynamic value;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return SiagaCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 4),
-          Text('$value', style: Theme.of(context).textTheme.headlineMedium),
-        ],
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: SiagaColors.primarySoft,
+            borderRadius: BorderRadius.circular(SiagaRadius.sm),
+            border: Border.all(color: SiagaColors.primaryBorder),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            step,
+            style: const TextStyle(
+              color: SiagaColors.navy,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: SiagaColors.navy,
+          ),
+        ),
+      ],
     );
   }
 }

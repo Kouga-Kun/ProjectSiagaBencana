@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/navigation/app_section.dart';
 import '../../../app/siaga_theme.dart';
+import '../../../app/widgets/siaga_components.dart';
 import '../../auth/data/auth_session_service.dart';
 import '../data/education_data_service.dart';
 import 'education_material_detail_page.dart';
@@ -82,9 +83,7 @@ class _EducationPageState extends State<EducationPage> {
   }
 
   void _syncReminderFormFromProgress(ReminderPreference pref) {
-    if (_remSyncedOnce) {
-      return;
-    }
+    if (_remSyncedOnce) return;
     _remSyncedOnce = true;
     _remEnabled = pref.isEnabled;
     _remTime = pref.reminderTime;
@@ -103,9 +102,8 @@ class _EducationPageState extends State<EducationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalPadding = MediaQuery.sizeOf(context).width < 600
-        ? 18.0
-        : 30.0;
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = SiagaBreakpoints.pageHorizontalPadding(width);
 
     if (widget.isAuthLoading) {
       return const Center(
@@ -124,50 +122,57 @@ class _EducationPageState extends State<EducationPage> {
       return ListView(
         padding: EdgeInsets.fromLTRB(
           horizontalPadding,
-          32,
+          36,
           horizontalPadding,
           44,
         ),
         children: [
-          Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: SiagaColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.lock_outline_rounded,
-                  size: 48,
-                  color: SiagaColors.navy,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SiagaCard(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SiagaIconTile(
+                      icon: Icons.lock_outline_rounded,
+                      size: 52,
+                      color: SiagaColors.navy,
+                      backgroundColor: SiagaColors.primarySoft,
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Login Diperlukan untuk Edukasi Bencana',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Fitur Edukasi Gempa Bumi dan Tsunami menyimpan progres membaca, hasil simulasi, nilai kuis, Misi Siaga, badge, serta pengaturan pengingat secara terpisah untuk setiap akun.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 18),
+                    const SiagaBullet(
+                      text:
+                          'Progres belajar dan posisi membaca tersimpan otomatis di server.',
+                      icon: Icons.cloud_done_outlined,
+                      color: SiagaColors.primaryBlue,
+                    ),
+                    const SiagaBullet(
+                      text:
+                          'Akses 24 materi resmi, 12 skenario simulasi, kuis, dan Misi Siaga.',
+                      icon: Icons.school_outlined,
+                      color: SiagaColors.safe,
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: widget.onRequireLogin,
+                      icon: const Icon(Icons.login_rounded, size: 18),
+                      label: const Text('Masuk ke Akun SiagaBencana'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  'Login Diperlukan untuk Edukasi Bencana',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Fitur Edukasi Gempa Bumi dan Tsunami menyimpan progres membaca, hasil simulasi, nilai kuis, Misi Siaga, badge, serta pengaturan pengingat secara terpisah untuk setiap akun di database. Silakan masuk terlebih dahulu.',
-                  style: TextStyle(
-                    color: SiagaColors.textMuted,
-                    fontSize: 14.5,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: SiagaColors.navy,
-                  ),
-                  onPressed: widget.onRequireLogin,
-                  icon: const Icon(Icons.login_rounded),
-                  label: const Text('Masuk ke Akun SiagaBencana'),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -190,30 +195,75 @@ class _EducationPageState extends State<EducationPage> {
             44,
           ),
           children: [
-            _buildHeaderBanner(),
+            _buildHeaderBanner(progress),
             if (_service.isLoading) ...[
               const SizedBox(height: 12),
               const LinearProgressIndicator(),
             ],
             if (_service.loadError != null) ...[
               const SizedBox(height: 12),
-              _buildErrorBanner(_service.loadError!),
+              SiagaNotice(
+                title: 'Gagal menyinkronkan data edukasi',
+                message: _service.loadError!,
+                tone: SiagaTone.danger,
+                icon: Icons.cloud_off_rounded,
+                trailing: TextButton(
+                  onPressed: () => unawaited(_service.refreshAll()),
+                  child: const Text('Muat Ulang'),
+                ),
+              ),
             ],
             if (_service.saveStatus != SaveSyncStatus.idle) ...[
               const SizedBox(height: 12),
               _buildSaveStatusBanner(),
             ],
             if (progress.pendingReminders.isNotEmpty) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _buildPendingRemindersBanner(progress.pendingReminders),
             ],
             const SizedBox(height: 20),
-            _buildMainCategoriesRow(),
+            _buildMainCategoriesRow(progress),
             const SizedBox(height: 20),
-            _buildProgressSummaryCard(progress),
-            const SizedBox(height: 20),
-            _buildFeatureMenus(),
-            const SizedBox(height: 16),
+            _buildCompactProgressStrip(progress),
+            const SizedBox(height: 22),
+            SiagaSegmentedTabs(
+              selectedIndex: _selectedFeatureIndex,
+              onSelected: (index) =>
+                  setState(() => _selectedFeatureIndex = index),
+              items: [
+                SiagaSegmentedTabItem(
+                  label: 'Belajar',
+                  icon: Icons.menu_book_outlined,
+                  badgeText: '${progress.materialsCompleted}/${progress.materialsTotal}',
+                ),
+                SiagaSegmentedTabItem(
+                  label: 'Simulasi',
+                  icon: Icons.psychology_alt_outlined,
+                  badgeText:
+                      '${progress.simulationsCompleted}/${progress.simulationsTotal}',
+                ),
+                SiagaSegmentedTabItem(
+                  label: 'Kuis',
+                  icon: Icons.quiz_outlined,
+                  badgeText: '${progress.quizzesCompleted}/${progress.quizzesTotal}',
+                ),
+                SiagaSegmentedTabItem(
+                  label: 'Misi Siaga',
+                  icon: Icons.flag_outlined,
+                  badgeText:
+                      '${progress.missionsCompleted}/${progress.missionsTotal}',
+                ),
+                const SiagaSegmentedTabItem(
+                  label: 'Progres & Riwayat',
+                  icon: Icons.insights_rounded,
+                ),
+                const SiagaSegmentedTabItem(
+                  label: 'Pengingat',
+                  icon: Icons.notifications_none_rounded,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
             _buildActiveFeatureContent(progress),
           ],
         );
@@ -221,290 +271,310 @@ class _EducationPageState extends State<EducationPage> {
     );
   }
 
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFCA5A5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.cloud_off_rounded, color: SiagaColors.danger),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: SiagaColors.danger,
-                fontWeight: FontWeight.w700,
-                fontSize: 13.5,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => unawaited(_service.refreshAll()),
-            child: const Text('Muat Ulang'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSaveStatusBanner() {
     final status = _service.saveStatus;
-    final (Color bg, Color fg, IconData icon) = switch (status) {
-      SaveSyncStatus.saving => (
-        const Color(0xFFEFF6FF),
-        SiagaColors.navy,
-        Icons.sync_rounded,
-      ),
-      SaveSyncStatus.saved => (
-        const Color(0xFFDCFCE7),
-        SiagaColors.safe,
-        Icons.cloud_done_outlined,
-      ),
-      SaveSyncStatus.error => (
-        const Color(0xFFFEF2F2),
-        SiagaColors.danger,
-        Icons.error_outline_rounded,
-      ),
-      SaveSyncStatus.idle => (Colors.transparent, Colors.transparent, Icons.info),
+    final tone = switch (status) {
+      SaveSyncStatus.saving => SiagaTone.info,
+      SaveSyncStatus.saved => SiagaTone.success,
+      SaveSyncStatus.error => SiagaTone.danger,
+      SaveSyncStatus.idle => SiagaTone.neutral,
+    };
+    final icon = switch (status) {
+      SaveSyncStatus.saving => Icons.sync_rounded,
+      SaveSyncStatus.saved => Icons.cloud_done_outlined,
+      SaveSyncStatus.error => Icons.error_outline_rounded,
+      SaveSyncStatus.idle => Icons.info_outline_rounded,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: fg),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _service.saveStatusMessage ?? '',
-              style: TextStyle(
-                color: fg,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          if (status == SaveSyncStatus.error && _service.hasPendingRetry)
-            FilledButton.tonal(
+    return SiagaNotice(
+      title: status == SaveSyncStatus.saved
+          ? 'Progres tersimpan'
+          : status == SaveSyncStatus.saving
+          ? 'Menyimpan progres'
+          : 'Gagal menyimpan progres',
+      message: _service.saveStatusMessage ?? '',
+      tone: tone,
+      icon: icon,
+      trailing: status == SaveSyncStatus.error && _service.hasPendingRetry
+          ? OutlinedButton(
               onPressed: () => unawaited(_service.retryLastSave()),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 34)),
               child: const Text('Coba Lagi'),
-            ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 
   Widget _buildPendingRemindersBanner(List<ReminderItem> reminders) {
     final first = reminders.first;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+    return SiagaNotice(
+      title: first.title,
+      message: first.message,
+      tone: SiagaTone.warning,
+      icon: Icons.notifications_active_outlined,
+      trailing: OutlinedButton(
+        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36)),
+        onPressed: () {
+          if (first.targetType == 'material' && first.targetSlug != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => EducationMaterialDetailPage(
+                  materialSlugOrId: first.targetSlug!,
+                  service: _service,
+                ),
+              ),
+            );
+          } else if (first.targetType == 'simulation') {
+            setState(() => _selectedFeatureIndex = 1);
+          } else {
+            setState(() => _selectedFeatureIndex = 3);
+          }
+        },
+        child: const Text('Lanjutkan'),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.notifications_active_outlined,
-            color: Color(0xFFB45309),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
+    );
+  }
+
+  Widget _buildHeaderBanner(EducationUserProgress progress) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isNarrow ? 20 : 28),
+      decoration: BoxDecoration(
+        color: SiagaColors.navy,
+        borderRadius: BorderRadius.circular(SiagaRadius.xl),
+        border: Border.all(color: const Color(0xFF1E3A5F)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 780;
+
+          final left = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.school_outlined,
+                    color: Color(0xFF93C5FD),
+                    size: 15,
+                  ),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      'PUSAT EDUKASI MITIGASI · ${widget.user!.name.toUpperCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF93C5FD),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Edukasi Gempa Bumi dan Tsunami',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: Colors.white,
+                  fontSize: isWide ? 28 : 23,
+                ),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                '"Kenali Risikonya, Lindungi Dirimu, Selamatkan Sesama."',
+                style: TextStyle(
+                  color: Color(0xFFFBBF24),
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: const Text(
+                  'Pelajari pengetahuan kesiapsiagaan resmi dari BNPB, BMKG, Basarnas, dan BPBD mengenai pengenalan risiko, Tas Siaga Bencana, prosedur Drop, Cover, and Hold On, serta evakuasi mandiri.',
+                  style: TextStyle(
+                    color: Color(0xFFCBD5E1),
+                    fontSize: 13.8,
+                    height: 1.55,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: SiagaColors.navy,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedFeatureIndex = 0;
+                        _selectedCategory = 'Semua';
+                      });
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                    label: const Text('Mulai Belajar Sekarang'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0x14FFFFFF),
+                      side: const BorderSide(color: Color(0x4DFFFFFF)),
+                    ),
+                    onPressed: () => widget.onNavigate(AppSection.evacuation),
+                    icon: const Icon(Icons.map_outlined, size: 17),
+                    label: const Text('Buka Peta Evakuasi'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0x14FFFFFF),
+                      side: const BorderSide(color: Color(0x4DFFFFFF)),
+                    ),
+                    onPressed: () => unawaited(_service.refreshAll()),
+                    icon: const Icon(Icons.refresh_rounded, size: 17),
+                    label: const Text('Sinkronkan Data'),
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          final readinessBox = Container(
+            width: isWide ? 280 : double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF14345C),
+              borderRadius: BorderRadius.circular(SiagaRadius.lg),
+              border: Border.all(color: const Color(0xFF234775)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  first.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF92400E),
-                    fontSize: 14,
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.military_tech_rounded,
+                      color: Color(0xFFFBBF24),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Level ${progress.level.levelNumber} · ${progress.level.levelName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '${progress.overallPercentage}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${progress.totalPoints} Poin',
+                      style: const TextStyle(
+                        color: Color(0xFF93C5FD),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(SiagaRadius.pill),
+                  child: LinearProgressIndicator(
+                    value: (progress.overallPercentage / 100.0).clamp(0.0, 1.0),
+                    minHeight: 7,
+                    backgroundColor: const Color(0xFF234775),
+                    color: const Color(0xFF38BDF8),
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 10),
                 Text(
-                  first.message,
+                  progress.initialMessage,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF78350F),
-                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                    fontSize: 12,
                     height: 1.4,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton.tonal(
-            onPressed: () {
-              if (first.targetType == 'material' && first.targetSlug != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => EducationMaterialDetailPage(
-                      materialSlugOrId: first.targetSlug!,
-                      service: _service,
-                    ),
-                  ),
-                );
-              } else if (first.targetType == 'simulation') {
-                setState(() => _selectedFeatureIndex = 1);
-              } else {
-                setState(() => _selectedFeatureIndex = 3);
-              }
-            },
-            child: const Text('Lanjutkan'),
-          ),
-        ],
-      ),
-    );
-  }
+          );
 
-  Widget _buildHeaderBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SiagaColors.navy, Color(0xFF0F172A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: SiagaColors.navy.withValues(alpha: 0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.school_rounded, color: Colors.white, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  'PUSAT EDUKASI MITIGASI · ${widget.user!.name.toUpperCase()}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Edukasi Gempa Bumi dan Tsunami',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            '"Kenali Risikonya, Lindungi Dirimu, Selamatkan Sesama."',
-            style: TextStyle(
-              color: Color(0xFF93C5FD),
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Pelajari pengetahuan kesiapsiagaan resmi dari BNPB, BMKG, Basarnas, dan BPBD mengenai cara mengenali risiko, menyiapkan Tas Siaga Bencana, menerapkan prosedur Drop, Cover, and Hold On, serta mengevakuasi diri ke tempat aman.',
-            style: TextStyle(
-              color: Color(0xFFE2E8F0),
-              fontSize: 13.8,
-              height: 1.55,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          if (!isWide) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [left, const SizedBox(height: 18), readinessBox],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: SiagaColors.danger,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _selectedFeatureIndex = 0;
-                    _selectedCategory = 'Semua';
-                  });
-                },
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Mulai Belajar Sekarang'),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF93C5FD)),
-                ),
-                onPressed: () => widget.onNavigate(AppSection.evacuation),
-                icon: const Icon(Icons.map_outlined),
-                label: const Text('Buka Peta Evakuasi'),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF93C5FD)),
-                ),
-                onPressed: () => unawaited(_service.refreshAll()),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Sinkronkan Data'),
-              ),
+              Expanded(child: left),
+              const SizedBox(width: 24),
+              readinessBox,
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMainCategoriesRow() {
+  Widget _buildMainCategoriesRow(EducationUserProgress progress) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 700;
-        final gempaCard = _buildCategoryCard(
-          label: 'A. Kategori Utama',
+        final gempaCard = _CategoryTrackCard(
+          eyebrow: 'KATEGORI UTAMA A',
           title: 'Gempa Bumi',
           description:
-              '12 Materi lengkap dari pengertian gempa, persiapan rumah, Drop Cover Hold On di rumah/sekolah/gedung, hingga bahaya susulan & Tas Siaga.',
+              '12 materi terstruktur mulai dari pengenalan risiko, pengamanan rumah, prosedur Drop, Cover, and Hold On, hingga Tas Siaga.',
+          completed: progress.earthquakeMaterialsCompleted,
+          total: progress.earthquakeMaterialsTotal,
           icon: Icons.vibration_rounded,
           accentColor: SiagaColors.warning,
           onTapLearn: () => _selectCategoryAndJumpToLearn('Gempa Bumi'),
         );
-        final tsunamiCard = _buildCategoryCard(
-          label: 'B. Kategori Utama',
+        final tsunamiCard = _CategoryTrackCard(
+          eyebrow: 'KATEGORI UTAMA B',
           title: 'Tsunami',
           description:
-              '12 Materi lengkap hubungan gempa & tsunami, 3 level peringatan dini BMKG (Awas, Siaga, Waspada), tanda alam air laut surut, dan evakuasi ke tempat tinggi.',
+              '12 materi lengkap mengenai hubungan gempa & tsunami, 3 level peringatan dini BMKG, tanda alam pesisir, dan evakuasi mandiri.',
+          completed: progress.tsunamiMaterialsCompleted,
+          total: progress.tsunamiMaterialsTotal,
           icon: Icons.waves_rounded,
           accentColor: SiagaColors.info,
           onTapLearn: () => _selectCategoryAndJumpToLearn('Tsunami'),
@@ -527,236 +597,48 @@ class _EducationPageState extends State<EducationPage> {
     );
   }
 
-  Widget _buildCategoryCard({
-    required String label,
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color accentColor,
-    required VoidCallback onTapLearn,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: SiagaColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCompactProgressStrip(EducationUserProgress progress) {
+    return SiagaCard(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Wrap(
+        spacing: 20,
+        runSpacing: 12,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: accentColor,
-                  ),
-                ),
-              ),
-              Icon(icon, color: accentColor, size: 28),
-            ],
+          _InlineMetric(
+            icon: Icons.menu_book_outlined,
+            label: 'Materi Selesai',
+            value: '${progress.materialsCompleted}/${progress.materialsTotal}',
+            color: SiagaColors.navy,
           ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: SiagaColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            description,
-            style: const TextStyle(
-              fontSize: 13.5,
-              color: SiagaColors.textMuted,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.tonalIcon(
-              onPressed: onTapLearn,
-              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text('Pelajari $title'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressSummaryCard(EducationUserProgress progress) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: SiagaColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                'Ringkasan Progres & Level Kesiapsiagaan',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: SiagaColors.textDark,
-                ),
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  _buildTag(
-                    '🎖️ Level ${progress.level.levelNumber} · ${progress.level.levelName}',
-                    const Color(0xFFE0F2FE),
-                    const Color(0xFF0369A1),
-                  ),
-                  _buildTag(
-                    '${progress.overallPercentage}% · ${progress.totalPoints} Poin',
-                    const Color(0xFFDCFCE7),
-                    SiagaColors.safe,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            progress.initialMessage,
-            style: const TextStyle(fontSize: 13, color: SiagaColors.textMuted),
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: (progress.overallPercentage / 100.0).clamp(0.0, 1.0),
-              minHeight: 10,
-              backgroundColor: const Color(0xFFE2E8F0),
-              color: SiagaColors.navy,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildStatChip(
-                'Materi Selesai',
-                '${progress.materialsCompleted}/${progress.materialsTotal}',
-              ),
-              _buildStatChip(
-                'Simulasi',
+          _InlineMetric(
+            icon: Icons.psychology_alt_outlined,
+            label: 'Simulasi',
+            value:
                 '${progress.simulationsCompleted}/${progress.simulationsTotal}',
-              ),
-              _buildStatChip(
-                'Kuis (Rata² ${progress.quizAverageScore})',
-                '${progress.quizzesCompleted}/${progress.quizzesTotal}',
-              ),
-              _buildStatChip(
-                'Misi Siaga',
-                '${progress.missionsCompleted}/${progress.missionsTotal}',
-              ),
-              _buildStatChip(
-                'Badge Diraih',
-                '${progress.earnedBadgesCount}/${progress.badges.length}',
-              ),
-            ],
+            color: SiagaColors.warning,
+          ),
+          _InlineMetric(
+            icon: Icons.quiz_outlined,
+            label: 'Kuis (Rata-rata ${progress.quizAverageScore})',
+            value: '${progress.quizzesCompleted}/${progress.quizzesTotal}',
+            color: SiagaColors.info,
+          ),
+          _InlineMetric(
+            icon: Icons.flag_outlined,
+            label: 'Misi Siaga',
+            value: '${progress.missionsCompleted}/${progress.missionsTotal}',
+            color: SiagaColors.safe,
+          ),
+          _InlineMetric(
+            icon: Icons.workspace_premium_outlined,
+            label: 'Badge Diraih',
+            value: '${progress.earnedBadgesCount}/${progress.badges.length}',
+            color: SiagaColors.warning,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: SiagaColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              color: SiagaColors.navy,
-              fontSize: 13.5,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12.5, color: SiagaColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureMenus() {
-    final tabs = [
-      (0, 'Belajar', Icons.menu_book_rounded),
-      (1, 'Simulasi', Icons.psychology_alt_rounded),
-      (2, 'Kuis', Icons.quiz_rounded),
-      (3, 'Misi Siaga', Icons.flag_circle_rounded),
-      (4, 'Progres & Riwayat', Icons.insights_rounded),
-      (5, 'Pengingat', Icons.notifications_active_outlined),
-    ];
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: tabs.map((tab) {
-        final isSelected = _selectedFeatureIndex == tab.$1;
-        return ChoiceChip(
-          selected: isSelected,
-          onSelected: (_) {
-            setState(() {
-              _selectedFeatureIndex = tab.$1;
-            });
-          },
-          avatar: Icon(
-            tab.$3,
-            size: 18,
-            color: isSelected ? Colors.white : SiagaColors.navy,
-          ),
-          label: Text(tab.$2),
-          selectedColor: SiagaColors.navy,
-          backgroundColor: Colors.white,
-          labelStyle: TextStyle(
-            color: isSelected ? Colors.white : SiagaColors.textDark,
-            fontWeight: FontWeight.w700,
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -789,13 +671,8 @@ class _EducationPageState extends State<EducationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
+        SiagaCard(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: SiagaColors.border),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -804,10 +681,11 @@ class _EducationPageState extends State<EducationPage> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Cari materi gempa bumi atau tsunami...',
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  fillColor: SiagaColors.surfaceSubtle,
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
+                          icon: const Icon(Icons.clear_rounded, size: 18),
                           onPressed: () {
                             _searchController.clear();
                             setState(() {});
@@ -825,20 +703,21 @@ class _EducationPageState extends State<EducationPage> {
                     FilterChip(
                       selected: _selectedCategory == cat,
                       label: Text(cat),
-                      onSelected: (_) => setState(() => _selectedCategory = cat),
+                      onSelected: (_) =>
+                          setState(() => _selectedCategory = cat),
                     ),
                   for (final diff in ['Semua', 'Dasar', 'Menengah', 'Lanjutan'])
                     FilterChip(
                       selected: _selectedDifficulty == diff,
                       label: Text(
-                        diff == 'Semua' ? 'Semua Kesulitan' : 'Tingkat $diff',
+                        diff == 'Semua' ? 'Semua Tingkat' : 'Tingkat $diff',
                       ),
                       onSelected: (_) =>
                           setState(() => _selectedDifficulty = diff),
                     ),
                   FilterChip(
                     selected: _favoritesOnly,
-                    avatar: const Icon(Icons.star_rounded, size: 16),
+                    avatar: const Icon(Icons.star_rounded, size: 15),
                     label: const Text('Favorit Saya'),
                     onSelected: (v) => setState(() => _favoritesOnly = v),
                   ),
@@ -848,134 +727,130 @@ class _EducationPageState extends State<EducationPage> {
           ),
         ),
         const SizedBox(height: 16),
-
         if (filtered.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Text(
-              'Tidak ada materi yang sesuai dengan filter pencarian.',
-              textAlign: TextAlign.center,
-            ),
+          const SiagaEmptyState(
+            icon: Icons.menu_book_outlined,
+            title: 'Materi tidak ditemukan',
+            message:
+                'Tidak ada materi yang sesuai dengan kata kunci atau filter yang dipilih.',
           )
         else
-          ...filtered.map(
-            (item) => Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: SiagaColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _buildTag(
-                        item.category,
-                        item.category == 'Gempa Bumi'
-                            ? const Color(0xFFFEF3C7)
-                            : const Color(0xFFE0F2FE),
-                        item.category == 'Gempa Bumi'
-                            ? const Color(0xFFB45309)
-                            : const Color(0xFF0369A1),
-                      ),
-                      _buildTag(
-                        item.difficulty,
-                        const Color(0xFFF1F5F9),
-                        SiagaColors.textDark,
-                      ),
-                      if (item.isCompleted)
-                        _buildTag(
-                          '✓ Selesai',
-                          const Color(0xFFDCFCE7),
-                          SiagaColors.safe,
-                        )
-                      else if (item.progressPercent > 0)
-                        _buildTag(
-                          'Lanjutkan · ${item.progressPercent}%',
-                          const Color(0xFFFEF9C3),
-                          const Color(0xFFA16207),
-                        ),
-                      if (item.isFavorite)
-                        _buildTag(
-                          '★ Favorit',
-                          const Color(0xFFFEF3C7),
-                          const Color(0xFFB45309),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: SiagaColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.summary,
-                    style: const TextStyle(
-                      fontSize: 13.8,
-                      color: SiagaColors.textMuted,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Ref: ${item.sourceReference}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: SiagaColors.textMuted,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: SiagaColors.navy,
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => EducationMaterialDetailPage(
-                                materialSlugOrId: item.slug,
-                                service: _service,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.menu_book_rounded, size: 18),
-                        label: Text(
-                          item.progressPercent > 0 && !item.isCompleted
-                              ? 'Lanjutkan Membaca'
-                              : 'Baca Materi',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          SiagaResponsiveGrid(
+            minimumItemWidth: 380,
+            spacing: 14,
+            children: [
+              for (final item in filtered) _buildMaterialCard(item),
+            ],
           ),
       ],
+    );
+  }
+
+  Widget _buildMaterialCard(EducationMaterialItem item) {
+    final isGempa = item.category == 'Gempa Bumi';
+    final catTone = isGempa ? SiagaTone.warning : SiagaTone.info;
+
+    return SiagaInteractiveCard(
+      padding: const EdgeInsets.all(18),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EducationMaterialDetailPage(
+              materialSlugOrId: item.slug,
+              service: _service,
+            ),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SiagaBadge(label: item.category, tone: catTone, compact: true),
+              const SizedBox(width: 6),
+              SiagaBadge(
+                label: item.difficulty,
+                tone: SiagaTone.neutral,
+                compact: true,
+              ),
+              const Spacer(),
+              if (item.isFavorite)
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: 17,
+                    color: SiagaColors.warning,
+                  ),
+                ),
+              if (item.isCompleted)
+                const SiagaStatusDot(label: 'Selesai', tone: SiagaTone.success)
+              else if (item.progressPercent > 0)
+                SiagaStatusDot(
+                  label: '${item.progressPercent}%',
+                  tone: SiagaTone.warning,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            item.title,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.summary,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+          ),
+          if (item.progressPercent > 0 && !item.isCompleted) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(SiagaRadius.pill),
+              child: LinearProgressIndicator(
+                value: (item.progressPercent / 100.0).clamp(0.0, 1.0),
+                minHeight: 5,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Ref: ${item.sourceReference}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                item.progressPercent > 0 && !item.isCompleted
+                    ? 'Lanjutkan'
+                    : 'Baca Materi',
+                style: const TextStyle(
+                  color: SiagaColors.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                size: 15,
+                color: SiagaColors.primaryBlue,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -990,131 +865,139 @@ class _EducationPageState extends State<EducationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...sims.map(
-          (sim) => Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: SiagaColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _buildTag(
-                      'Simulasi ${sim.category}',
-                      sim.category == 'Gempa Bumi'
-                          ? const Color(0xFFFEF3C7)
-                          : const Color(0xFFE0F2FE),
-                      sim.category == 'Gempa Bumi'
-                          ? const Color(0xFFB45309)
-                          : const Color(0xFF0369A1),
-                    ),
-                    _buildTag(
-                      sim.difficulty,
-                      const Color(0xFFF1F5F9),
-                      SiagaColors.textDark,
-                    ),
-                    if (sim.draft != null)
-                      _buildTag(
-                        '⏸️ Tersimpan di Tahap ${sim.draft!.currentStepIndex + 1}',
-                        const Color(0xFFFEF9C3),
-                        const Color(0xFFA16207),
-                      ),
-                    if (sim.bestScore != null)
-                      _buildTag(
-                        'Terbaik: ${sim.bestScore}/100 · ${sim.attemptsCount}x main',
-                        const Color(0xFFDCFCE7),
-                        SiagaColors.safe,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  sim.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: SiagaColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  sim.scenarioContext,
-                  style: const TextStyle(
-                    fontSize: 13.8,
-                    color: SiagaColors.textMuted,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: SiagaColors.danger,
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => EducationSimulationPage(
-                            simulation: sim,
-                            service: _service,
+        if (sims.isEmpty)
+          const SiagaEmptyState(
+            icon: Icons.psychology_alt_outlined,
+            title: 'Belum ada simulasi tersedia',
+            message: 'Skenario simulasi untuk kategori yang dipilih belum tersedia.',
+          )
+        else
+          SiagaResponsiveGrid(
+            minimumItemWidth: 380,
+            spacing: 14,
+            children: [
+              for (final sim in sims)
+                SiagaCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          SiagaBadge(
+                            label: 'Simulasi ${sim.category}',
+                            tone: sim.category == 'Gempa Bumi'
+                                ? SiagaTone.warning
+                                : SiagaTone.info,
+                            compact: true,
                           ),
+                          SiagaBadge(
+                            label: sim.difficulty,
+                            tone: SiagaTone.neutral,
+                            compact: true,
+                          ),
+                          if (sim.draft != null)
+                            SiagaBadge(
+                              label:
+                                  'Tersimpan di Tahap ${sim.draft!.currentStepIndex + 1}',
+                              tone: SiagaTone.warning,
+                              icon: Icons.pause_circle_outline_rounded,
+                              compact: true,
+                            ),
+                          if (sim.bestScore != null)
+                            SiagaBadge(
+                              label:
+                                  'Terbaik: ${sim.bestScore}/100 (${sim.attemptsCount}x)',
+                              tone: SiagaTone.success,
+                              compact: true,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        sim.title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        sim.scenarioContext,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 14),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => EducationSimulationPage(
+                                  simulation: sim,
+                                  service: _service,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                          label: Text(
+                            sim.draft != null
+                                ? 'Lanjutkan Simulasi'
+                                : 'Mulai Simulasi',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        if (progress.simulationHistory.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'Riwayat Simulasi Terbaru',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 10),
+          SiagaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < progress.simulationHistory.take(6).length; i++) ...[
+                  Builder(
+                    builder: (context) {
+                      final h = progress.simulationHistory[i];
+                      return ListTile(
+                        leading: const SiagaIconTile(
+                          icon: Icons.psychology_alt_outlined,
+                          size: 36,
+                        ),
+                        title: Text(
+                          h.simulationTitle,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        subtitle: Text(
+                          h.category,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: SiagaBadge(
+                          label: 'Skor ${h.score}/100',
+                          tone: h.score >= 75
+                              ? SiagaTone.success
+                              : SiagaTone.info,
+                          compact: true,
                         ),
                       );
                     },
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: Text(
-                      sim.draft != null
-                          ? 'Lanjutkan Simulasi'
-                          : 'Mulai Simulasi',
-                    ),
                   ),
-                ),
+                  if (i < progress.simulationHistory.take(6).length - 1)
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                ],
               ],
             ),
           ),
-        ),
-        if (progress.simulationHistory.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text(
-            'Riwayat Simulasi Terbaru',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          for (final h in progress.simulationHistory.take(6))
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: SiagaColors.border),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${h.simulationTitle} (${h.category})',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  _buildTag(
-                    'Skor ${h.score}/100',
-                    const Color(0xFFEFF6FF),
-                    SiagaColors.navy,
-                  ),
-                ],
-              ),
-            ),
         ],
       ],
     );
@@ -1131,138 +1014,136 @@ class _EducationPageState extends State<EducationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...quizzes.map(
-          (quiz) => Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: SiagaColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _buildTag(
-                      'Kuis ${quiz.category}',
-                      quiz.category == 'Gempa Bumi'
-                          ? const Color(0xFFFEF3C7)
-                          : const Color(0xFFE0F2FE),
-                      quiz.category == 'Gempa Bumi'
-                          ? const Color(0xFFB45309)
-                          : const Color(0xFF0369A1),
-                    ),
-                    _buildTag(
-                      quiz.difficulty,
-                      const Color(0xFFF1F5F9),
-                      SiagaColors.textDark,
-                    ),
-                    _buildTag(
-                      '${quiz.questionsCount} Soal',
-                      const Color(0xFFEFF6FF),
-                      SiagaColors.navy,
-                    ),
-                    if (quiz.bestScore != null)
-                      _buildTag(
-                        'Terbaik: ${quiz.bestScore} · Terakhir: ${quiz.latestScore ?? quiz.bestScore} (${quiz.attemptsCount}x)',
-                        const Color(0xFFDCFCE7),
-                        SiagaColors.safe,
+        if (quizzes.isEmpty)
+          const SiagaEmptyState(
+            icon: Icons.quiz_outlined,
+            title: 'Belum ada kuis tersedia',
+            message: 'Kuis evaluasi untuk kategori yang dipilih belum tersedia.',
+          )
+        else
+          SiagaResponsiveGrid(
+            minimumItemWidth: 380,
+            spacing: 14,
+            children: [
+              for (final quiz in quizzes)
+                SiagaCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          SiagaBadge(
+                            label: 'Kuis ${quiz.category}',
+                            tone: quiz.category == 'Gempa Bumi'
+                                ? SiagaTone.warning
+                                : SiagaTone.info,
+                            compact: true,
+                          ),
+                          SiagaBadge(
+                            label: quiz.difficulty,
+                            tone: SiagaTone.neutral,
+                            compact: true,
+                          ),
+                          SiagaBadge(
+                            label: '${quiz.questionsCount} Soal',
+                            tone: SiagaTone.info,
+                            compact: true,
+                          ),
+                          if (quiz.bestScore != null)
+                            SiagaBadge(
+                              label:
+                                  'Terbaik: ${quiz.bestScore} · Terakhir: ${quiz.latestScore ?? quiz.bestScore} (${quiz.attemptsCount}x)',
+                              tone: SiagaTone.success,
+                              compact: true,
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  quiz.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: SiagaColors.textDark,
+                      const SizedBox(height: 12),
+                      Text(
+                        quiz.title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        quiz.description,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 14),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => EducationQuizPage(
+                                  quiz: quiz,
+                                  service: _service,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.quiz_outlined, size: 17),
+                          label: Text(
+                            quiz.attemptsCount > 0
+                                ? 'Kerjakan Ulang Kuis'
+                                : 'Kerjakan Kuis',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  quiz.description,
-                  style: const TextStyle(
-                    fontSize: 13.8,
-                    color: SiagaColors.textMuted,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: SiagaColors.navy,
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              EducationQuizPage(quiz: quiz, service: _service),
+            ],
+          ),
+        if (progress.quizHistory.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'Riwayat Percobaan Kuis',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 10),
+          SiagaCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < progress.quizHistory.take(8).length; i++) ...[
+                  Builder(
+                    builder: (context) {
+                      final h = progress.quizHistory[i];
+                      return ListTile(
+                        leading: const SiagaIconTile(
+                          icon: Icons.fact_check_outlined,
+                          size: 36,
+                        ),
+                        title: Text(
+                          h.quizTitle,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        subtitle: Text(
+                          'Benar ${h.correctAnswers}/${h.totalQuestions} · ${h.category}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: SiagaBadge(
+                          label: 'Nilai ${h.finalScore}',
+                          tone: h.finalScore >= 75
+                              ? SiagaTone.success
+                              : SiagaTone.warning,
+                          compact: true,
                         ),
                       );
                     },
-                    icon: const Icon(Icons.quiz_rounded, size: 18),
-                    label: Text(
-                      quiz.attemptsCount > 0 ? 'Kerjakan Ulang Kuis' : 'Kerjakan Kuis',
-                    ),
                   ),
-                ),
+                  if (i < progress.quizHistory.take(8).length - 1)
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                ],
               ],
             ),
           ),
-        ),
-        if (progress.quizHistory.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text(
-            'Riwayat Percobaan Kuis',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          for (final h in progress.quizHistory.take(8))
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: SiagaColors.border),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          h.quizTitle,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          'Benar ${h.correctAnswers}/${h.totalQuestions} · ${h.category}',
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: SiagaColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildTag(
-                    'Nilai ${h.finalScore}',
-                    const Color(0xFFDCFCE7),
-                    SiagaColors.safe,
-                  ),
-                ],
-              ),
-            ),
         ],
       ],
     );
@@ -1276,116 +1157,128 @@ class _EducationPageState extends State<EducationPage> {
       return true;
     }).toList();
 
+    if (missions.isEmpty) {
+      return const SiagaEmptyState(
+        icon: Icons.flag_outlined,
+        title: 'Belum ada Misi Siaga',
+        message: 'Daftar Misi Siaga untuk kategori yang dipilih belum tersedia.',
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...missions.map(
-          (ms) => Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: SiagaColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _buildTag(
-                      'Misi ${ms.category}',
-                      ms.category == 'Gempa Bumi'
-                          ? const Color(0xFFFEF3C7)
-                          : const Color(0xFFE0F2FE),
-                      ms.category == 'Gempa Bumi'
-                          ? const Color(0xFFB45309)
-                          : const Color(0xFF0369A1),
-                    ),
-                    _buildTag(
-                      '+${ms.points} Poin',
-                      const Color(0xFFDCFCE7),
-                      SiagaColors.safe,
-                    ),
-                    _buildTag(
-                      ms.userStatusLabel,
-                      ms.userStatus == 'selesai'
-                          ? const Color(0xFFDCFCE7)
-                          : ms.userStatus == 'sedang_dikerjakan'
-                          ? const Color(0xFFFEF9C3)
-                          : const Color(0xFFF1F5F9),
-                      ms.userStatus == 'selesai'
-                          ? SiagaColors.safe
-                          : SiagaColors.textDark,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  ms.title,
-                  style: const TextStyle(
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w800,
-                    color: SiagaColors.textDark,
+        for (final ms in missions)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SiagaCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      SiagaBadge(
+                        label: 'Misi ${ms.category}',
+                        tone: ms.category == 'Gempa Bumi'
+                            ? SiagaTone.warning
+                            : SiagaTone.info,
+                        compact: true,
+                      ),
+                      SiagaBadge(
+                        label: '+${ms.points} Poin',
+                        tone: SiagaTone.success,
+                        compact: true,
+                      ),
+                      SiagaStatusDot(
+                        label: ms.userStatusLabel,
+                        tone: ms.userStatus == 'selesai'
+                            ? SiagaTone.success
+                            : ms.userStatus == 'sedang_dikerjakan'
+                            ? SiagaTone.warning
+                            : SiagaTone.neutral,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  ms.description,
-                  style: const TextStyle(
-                    fontSize: 13.8,
-                    color: SiagaColors.textMuted,
-                    height: 1.5,
+                  const SizedBox(height: 10),
+                  Text(
+                    ms.title,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-                const SizedBox(height: 10),
-                for (final inst in ms.instructions)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '• $inst',
-                      style: const TextStyle(
-                        fontSize: 13.2,
-                        color: SiagaColors.textDark,
+                  const SizedBox(height: 5),
+                  Text(
+                    ms.description,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+                  ),
+                  const SizedBox(height: 12),
+                  for (var idx = 0; idx < ms.instructions.length; idx++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${idx + 1}. ',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: SiagaColors.navy,
+                              fontSize: 13.2,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              ms.instructions[idx],
+                              style: const TextStyle(
+                                fontSize: 13.2,
+                                color: SiagaColors.textSecondary,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                if (ms.startedAt != null || ms.completedAt != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    [
-                      if (ms.startedAt != null)
-                        'Dimulai: ${_shortDate(ms.startedAt!)}',
-                      if (ms.completedAt != null)
-                        'Selesai: ${_shortDate(ms.completedAt!)}',
-                    ].join(' · '),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: SiagaColors.textMuted,
+                  if (ms.startedAt != null || ms.completedAt != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      [
+                        if (ms.startedAt != null)
+                          'Dimulai: ${_shortDate(ms.startedAt!)}',
+                        if (ms.completedAt != null)
+                          'Selesai: ${_shortDate(ms.completedAt!)}',
+                      ].join(' · '),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _missionActionButton(
+                        ms,
+                        'belum_dimulai',
+                        'Belum Dimulai',
+                      ),
+                      _missionActionButton(
+                        ms,
+                        'sedang_dikerjakan',
+                        'Sedang Dikerjakan',
+                      ),
+                      _missionActionButton(ms, 'selesai', 'Selesai'),
+                    ],
                   ),
                 ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _missionActionButton(ms, 'belum_dimulai', 'Belum Dimulai'),
-                    _missionActionButton(
-                      ms,
-                      'sedang_dikerjakan',
-                      'Sedang Dikerjakan',
-                    ),
-                    _missionActionButton(ms, 'selesai', 'Selesai ✓'),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -1397,8 +1290,8 @@ class _EducationPageState extends State<EducationPage> {
       label: Text(label),
       selectedColor: status == 'selesai' ? SiagaColors.safe : SiagaColors.navy,
       labelStyle: TextStyle(
-        color: active ? Colors.white : SiagaColors.textDark,
-        fontWeight: FontWeight.w700,
+        color: active ? Colors.white : SiagaColors.textSecondary,
+        fontWeight: FontWeight.w600,
         fontSize: 12.5,
       ),
       onSelected: (_) async {
@@ -1432,228 +1325,234 @@ class _EducationPageState extends State<EducationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Gempa vs Tsunami Progress + Level
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final masteryCard = SiagaCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Progres Penguasaan Materi',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  _categoryBar(
+                    'Kategori Gempa Bumi',
+                    '${progress.earthquakeMaterialsCompleted}/${progress.earthquakeMaterialsTotal} materi (${progress.earthquakePercentage}%)',
+                    progress.earthquakePercentage / 100.0,
+                    SiagaColors.warning,
+                  ),
+                  const SizedBox(height: 14),
+                  _categoryBar(
+                    'Kategori Tsunami',
+                    '${progress.tsunamiMaterialsCompleted}/${progress.tsunamiMaterialsTotal} materi (${progress.tsunamiPercentage}%)',
+                    progress.tsunamiPercentage / 100.0,
+                    SiagaColors.info,
+                  ),
+                  const SizedBox(height: 18),
+                  const Divider(height: 1),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 20,
+                    runSpacing: 10,
+                    children: [
+                      _InlineMetric(
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Rata-rata Kuis',
+                        value: '${progress.quizAverageScore}',
+                        color: SiagaColors.navy,
+                      ),
+                      _InlineMetric(
+                        icon: Icons.emoji_events_outlined,
+                        label: 'Nilai Terbaik',
+                        value: '${progress.quizBestScore}',
+                        color: SiagaColors.safe,
+                      ),
+                      _InlineMetric(
+                        icon: Icons.military_tech_outlined,
+                        label: 'Level ${progress.level.levelNumber}',
+                        value: progress.level.levelName,
+                        color: SiagaColors.warning,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+
+            final chartCard = progress.activityChart.isEmpty
+                ? null
+                : SiagaCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Aktivitas Belajar (7 Hari Terakhir)',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          height: 136,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: progress.activityChart.map((pt) {
+                              final h = (pt.count / maxChartCount) * 86.0;
+                              return Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '${pt.count}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: SiagaColors.navy,
+                                        fontFeatures: [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Container(
+                                      width: 24,
+                                      height: h < 6 ? 6 : h,
+                                      decoration: BoxDecoration(
+                                        color: pt.count > 0
+                                            ? SiagaColors.navy
+                                            : SiagaColors.surfaceMuted,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      pt.label,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: SiagaColors.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+            if (chartCard == null) return masteryCard;
+
+            if (constraints.maxWidth < 860) {
+              return Column(
+                children: [masteryCard, const SizedBox(height: 14), chartCard],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: masteryCard),
+                const SizedBox(width: 16),
+                Expanded(child: chartCard),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+
+        // Badges Grid
+        SiagaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Dashboard Progres Pembelajaran',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              SiagaSectionHeader(
+                title:
+                    'Pencapaian & Badge (${progress.earnedBadgesCount}/${progress.badges.length})',
+                subtitle:
+                    'Raih penghargaan dengan menyelesaikan materi, simulasi, kuis, dan Misi Siaga.',
               ),
               const SizedBox(height: 14),
-              _categoryBar(
-                'Kategori Gempa Bumi',
-                '${progress.earthquakeMaterialsCompleted}/${progress.earthquakeMaterialsTotal} materi (${progress.earthquakePercentage}%)',
-                progress.earthquakePercentage / 100.0,
-                SiagaColors.warning,
-              ),
-              const SizedBox(height: 12),
-              _categoryBar(
-                'Kategori Tsunami',
-                '${progress.tsunamiMaterialsCompleted}/${progress.tsunamiMaterialsTotal} materi (${progress.tsunamiPercentage}%)',
-                progress.tsunamiPercentage / 100.0,
-                SiagaColors.info,
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              SiagaResponsiveGrid(
+                minimumItemWidth: 280,
+                spacing: 12,
                 children: [
-                  _buildStatChip('Rata-rata Kuis', '${progress.quizAverageScore}'),
-                  _buildStatChip('Nilai Kuis Terbaik', '${progress.quizBestScore}'),
-                  _buildStatChip(
-                    'Level ${progress.level.levelNumber}',
-                    progress.level.levelName,
-                  ),
+                  for (final b in progress.badges)
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: b.isEarned
+                            ? SiagaColors.safeSoft
+                            : SiagaColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(SiagaRadius.md),
+                        border: Border.all(
+                          color: b.isEarned
+                              ? SiagaColors.safeBorder
+                              : SiagaColors.border,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SiagaIconTile(
+                            icon: b.isEarned
+                                ? Icons.workspace_premium_rounded
+                                : Icons.lock_outline_rounded,
+                            size: 38,
+                            color: b.isEarned
+                                ? SiagaColors.safe
+                                : SiagaColors.muted,
+                            backgroundColor: b.isEarned
+                                ? Colors.white
+                                : SiagaColors.surfaceMuted,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  b.name,
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  b.description,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${b.isEarned ? "Diraih" : "Syarat"}: ${b.criteriaDescription} (+${b.pointsReward} Poin)',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: b.isEarned
+                                        ? SiagaColors.safeText
+                                        : SiagaColors.navy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-        // 7-day learning activity bar chart
-        if (progress.activityChart.isNotEmpty) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: SiagaColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Grafik Aktivitas Belajar (7 Hari Terakhir)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 130,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: progress.activityChart.map((pt) {
-                      final h = (pt.count / maxChartCount) * 86.0;
-                      return Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${pt.count}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: SiagaColors.navy,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              width: 22,
-                              height: h < 6 ? 6 : h,
-                              decoration: BoxDecoration(
-                                color: pt.count > 0
-                                    ? SiagaColors.navy
-                                    : const Color(0xFFE2E8F0),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              pt.label,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: SiagaColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // Badges & Achievements
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
+        // Chronological Activity Log
+        SiagaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Pencapaian & Badge (${progress.earnedBadgesCount}/${progress.badges.length})',
-                style: const TextStyle(
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-              for (final b in progress.badges)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: b.isEarned
-                        ? const Color(0xFFF0FDF4)
-                        : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: b.isEarned
-                          ? const Color(0xFF86EFAC)
-                          : SiagaColors.border,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        b.isEarned
-                            ? Icons.workspace_premium_rounded
-                            : Icons.lock_outline_rounded,
-                        color: b.isEarned
-                            ? SiagaColors.safe
-                            : SiagaColors.textMuted,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${b.name} (+${b.pointsReward} Poin)',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14.5,
-                              ),
-                            ),
-                            Text(
-                              b.description,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: SiagaColors.textMuted,
-                              ),
-                            ),
-                            Text(
-                              'Syarat: ${b.criteriaDescription}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: SiagaColors.navy,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildTag(
-                        b.isEarned ? 'Diraih ✓' : 'Terkunci',
-                        b.isEarned
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFE2E8F0),
-                        b.isEarned ? SiagaColors.safe : SiagaColors.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Chronological Activity History
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: SiagaColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
                 'Riwayat Aktivitas Pembelajaran',
-                style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
               if (progress.recentActivities.isEmpty)
@@ -1661,49 +1560,51 @@ class _EducationPageState extends State<EducationPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
+                    color: SiagaColors.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(SiagaRadius.md),
                   ),
                   child: const Text(
-                    'Belum ada riwayat aktivitas. Mulailah membaca materi Gempa Bumi atau Tsunami pertama Anda!',
+                    'Belum ada riwayat aktivitas. Mulailah membaca materi Gempa Bumi atau Tsunami pertama Anda.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: SiagaColors.textMuted),
+                    style: TextStyle(color: SiagaColors.muted, fontSize: 13.5),
                   ),
                 )
               else
-                for (final act in progress.recentActivities)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFEFF6FF),
-                      child: const Icon(
-                        Icons.history_edu_rounded,
-                        color: SiagaColors.navy,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      '${act.typeLabel}: ${act.subjectTitle}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      [
-                        if (act.category != null) act.category!,
-                        if (act.createdAt != null) _shortDate(act.createdAt!),
-                      ].join(' · '),
-                      style: const TextStyle(fontSize: 12.5),
-                    ),
-                    trailing: act.pointsEarned > 0
-                        ? _buildTag(
-                            '+${act.pointsEarned} Poin',
-                            const Color(0xFFDCFCE7),
-                            SiagaColors.safe,
-                          )
-                        : null,
+                for (var i = 0; i < progress.recentActivities.length; i++) ...[
+                  Builder(
+                    builder: (context) {
+                      final act = progress.recentActivities[i];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const SiagaIconTile(
+                          icon: Icons.history_edu_outlined,
+                          size: 36,
+                        ),
+                        title: Text(
+                          '${act.typeLabel}: ${act.subjectTitle}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        subtitle: Text(
+                          [
+                            if (act.category != null) act.category!,
+                            if (act.createdAt != null)
+                              _shortDate(act.createdAt!),
+                          ].join(' · '),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: act.pointsEarned > 0
+                            ? SiagaBadge(
+                                label: '+${act.pointsEarned} Poin',
+                                tone: SiagaTone.success,
+                                compact: true,
+                              )
+                            : null,
+                      );
+                    },
                   ),
+                  if (i < progress.recentActivities.length - 1)
+                    const Divider(height: 1),
+                ],
             ],
           ),
         ),
@@ -1712,161 +1613,165 @@ class _EducationPageState extends State<EducationPage> {
   }
 
   Widget _buildRemindersSettingsView(EducationUserProgress progress) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: SiagaColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Pengaturan Pengingat Belajar',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Preferensi pengingat disimpan ke akun Anda di database Laravel. Pengingat tampil di dalam aplikasi (in-app) dan dijadwalkan di server Laravel tanpa spam — aktivitas yang sudah selesai dilewati secara otomatis.',
-            style: TextStyle(
-              fontSize: 13.5,
-              color: SiagaColors.textMuted,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'Aktifkan Pengingat Belajar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            value: _remEnabled,
-            onChanged: (val) => setState(() => _remEnabled = val),
-          ),
-          const Divider(),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Waktu Pengingat'),
-            subtitle: Text(_remTime),
-            trailing: OutlinedButton.icon(
-              onPressed: () async {
-                final parts = _remTime.split(':');
-                final picked = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay(
-                    hour: int.tryParse(parts.first) ?? 19,
-                    minute: parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0,
-                  ),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _remTime =
-                        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                  });
-                }
-              },
-              icon: const Icon(Icons.access_time_rounded),
-              label: const Text('Ubah Waktu'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: _remFrequency,
-            decoration: const InputDecoration(
-              labelText: 'Frekuensi Pengingat',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'daily', child: Text('Harian')),
-              DropdownMenuItem(
-                value: 'every_3_days',
-                child: Text('Setiap 3 Hari'),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: SiagaCard(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pengaturan Pengingat Belajar',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-              DropdownMenuItem(value: 'weekly', child: Text('Mingguan')),
-            ],
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _remFrequency = v);
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Ingatkan materi yang belum selesai dibaca'),
-            value: _remMaterials,
-            onChanged: (v) => setState(() => _remMaterials = v ?? true),
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Ingatkan Misi Siaga yang masih tertunda'),
-            value: _remMissions,
-            onChanged: (v) => setState(() => _remMissions = v ?? true),
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Ingatkan untuk melanjutkan belajar jika belum aktif'),
-            value: _remInactive,
-            onChanged: (v) => setState(() => _remInactive = v ?? true),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: SiagaColors.navy),
-            onPressed: _savingReminder
-                ? null
-                : () async {
-                    setState(() => _savingReminder = true);
-                    try {
-                      final msg = await _service.updateReminderPreference(
-                        ReminderPreference(
-                          isEnabled: _remEnabled,
-                          reminderTime: _remTime,
-                          frequency: _remFrequency,
-                          remindUnfinishedMaterials: _remMaterials,
-                          remindPendingMissions: _remMissions,
-                          remindInactiveLearning: _remInactive,
-                        ),
-                      );
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(msg),
-                            backgroundColor: SiagaColors.safe,
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(e.toString()),
-                            backgroundColor: SiagaColors.danger,
-                          ),
-                        );
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() => _savingReminder = false);
-                      }
+              const SizedBox(height: 6),
+              Text(
+                'Preferensi pengingat disimpan ke akun Anda di server. Pengingat ditampilkan di dalam aplikasi dan secara otomatis melewati aktivitas yang sudah selesai.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 18),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Aktifkan Pengingat Belajar',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Terima pengingat berkala untuk melanjutkan kesiapsiagaan.',
+                ),
+                value: _remEnabled,
+                onChanged: (val) => setState(() => _remEnabled = val),
+              ),
+              const Divider(height: 20),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Waktu Pengingat',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text('Setiap pukul $_remTime WIB'),
+                trailing: OutlinedButton.icon(
+                  onPressed: () async {
+                    final parts = _remTime.split(':');
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay(
+                        hour: int.tryParse(parts.first) ?? 19,
+                        minute: parts.length > 1
+                            ? (int.tryParse(parts[1]) ?? 0)
+                            : 0,
+                      ),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _remTime =
+                            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                      });
                     }
                   },
-            icon: _savingReminder
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(
-              _savingReminder ? 'Menyimpan...' : 'Simpan Pengaturan Pengingat',
-            ),
+                  icon: const Icon(Icons.access_time_rounded, size: 17),
+                  label: const Text('Ubah Waktu'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _remFrequency,
+                decoration: const InputDecoration(
+                  labelText: 'Frekuensi Pengingat',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'daily', child: Text('Harian')),
+                  DropdownMenuItem(
+                    value: 'every_3_days',
+                    child: Text('Setiap 3 Hari'),
+                  ),
+                  DropdownMenuItem(value: 'weekly', child: Text('Mingguan')),
+                ],
+                onChanged: (v) {
+                  if (v != null) setState(() => _remFrequency = v);
+                },
+              ),
+              const SizedBox(height: 14),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Ingatkan materi yang belum selesai dibaca'),
+                value: _remMaterials,
+                onChanged: (v) => setState(() => _remMaterials = v ?? true),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Ingatkan Misi Siaga yang masih tertunda'),
+                value: _remMissions,
+                onChanged: (v) => setState(() => _remMissions = v ?? true),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Ingatkan untuk melanjutkan belajar jika belum aktif',
+                ),
+                value: _remInactive,
+                onChanged: (v) => setState(() => _remInactive = v ?? true),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _savingReminder
+                    ? null
+                    : () async {
+                        setState(() => _savingReminder = true);
+                        try {
+                          final msg = await _service.updateReminderPreference(
+                            ReminderPreference(
+                              isEnabled: _remEnabled,
+                              reminderTime: _remTime,
+                              frequency: _remFrequency,
+                              remindUnfinishedMaterials: _remMaterials,
+                              remindPendingMissions: _remMissions,
+                              remindInactiveLearning: _remInactive,
+                            ),
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(msg),
+                                backgroundColor: SiagaColors.safe,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                                backgroundColor: SiagaColors.danger,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() => _savingReminder = false);
+                          }
+                        }
+                      },
+                icon: _savingReminder
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined, size: 18),
+                label: Text(
+                  _savingReminder
+                      ? 'Menyimpan...'
+                      : 'Simpan Pengaturan Pengingat',
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1883,23 +1788,23 @@ class _EducationPageState extends State<EducationPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
             Text(
               subtitle,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: SiagaColors.textMuted,
-              ),
+              style: const TextStyle(fontSize: 12.5, color: SiagaColors.muted),
             ),
           ],
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(SiagaRadius.pill),
           child: LinearProgressIndicator(
             value: ratio.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: const Color(0xFFE2E8F0),
+            minHeight: 7,
+            backgroundColor: SiagaColors.surfaceMuted,
             color: color,
           ),
         ),
@@ -1907,25 +1812,161 @@ class _EducationPageState extends State<EducationPage> {
     );
   }
 
-  Widget _buildTag(String text, Color bg, Color fg) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700),
+  String _shortDate(String iso) {
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt == null) return iso;
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _CategoryTrackCard extends StatelessWidget {
+  const _CategoryTrackCard({
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+    required this.completed,
+    required this.total,
+    required this.icon,
+    required this.accentColor,
+    required this.onTapLearn,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String description;
+  final int completed;
+  final int total;
+  final IconData icon;
+  final Color accentColor;
+  final VoidCallback onTapLearn;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
+
+    return SiagaInteractiveCard(
+      padding: EdgeInsets.zero,
+      onTap: onTapLearn,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: accentColor, width: 3.5)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SiagaIconTile(
+                  icon: icon,
+                  size: 40,
+                  color: accentColor,
+                  backgroundColor: accentColor.withValues(alpha: 0.1),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        eyebrow,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.7,
+                          color: accentColor,
+                        ),
+                      ),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$completed/$total',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: SiagaColors.muted,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              description,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontSize: 13.5),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(SiagaRadius.pill),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 5,
+                backgroundColor: SiagaColors.surfaceMuted,
+                color: accentColor,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: onTapLearn,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 40),
+              ),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+              label: Text('Pelajari $title'),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
-  String _shortDate(String iso) {
-    final dt = DateTime.tryParse(iso)?.toLocal();
-    if (dt == null) {
-      return iso;
-    }
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+class _InlineMetric extends StatelessWidget {
+  const _InlineMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: color),
+        const SizedBox(width: 7),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: SiagaColors.ink,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11.5, color: SiagaColors.muted),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
